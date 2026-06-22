@@ -71,6 +71,37 @@ io.on('connection', (socket) => {
 
         console.log(`Sala ${codigo} creada por ${nombre} (${socket.id})`);
     });
+
+    socket.on('unirseSala', ({ codigo, nombre }) => {
+        if (!salas.has(codigo)) {
+            socket.emit('error', { mensaje: 'La sala no existe' });
+            return;
+        }
+
+        const sala = salas.get(codigo);
+
+        if (sala.estado !== 'esperando') {
+            socket.emit('error', { mensaje: 'La partida ya empezó' });
+            return;
+        }
+
+        sala.jugadores.push({ id: socket.id, nombre });
+        socket.join(codigo);
+        socket.data.sala = codigo;
+
+        // avisarle solo al nuevo jugador que entró bien
+        socket.emit('salaUnida', {
+            codigo,
+            jugadores: sala.jugadores,
+        });
+
+        // avisarle a TODOS los demás que alguien entró
+        socket.to(codigo).emit('jugadorUnido', {
+            jugadores: sala.jugadores,
+        });
+
+        console.log(`${nombre} se unió a la sala ${codigo}`);
+    });
 });
 
 server.listen(PORT, () => {
