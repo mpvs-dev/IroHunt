@@ -3,6 +3,7 @@ const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
+const config = require("./config.js");
 
 const PORT = process.env.PORT || 3001;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
@@ -18,7 +19,7 @@ const io = new Server(server, {
 const salas = new Map();
 
 function generarCodigo() {
-    const caracteres = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
     let codigo;
     do {
         codigo = Array.from({ length: 6 }, () => caracteres[Math.floor(Math.random() * caracteres.length)]).join('');
@@ -26,16 +27,54 @@ function generarCodigo() {
     return codigo;
 }
 
+function iniciarFaseUno(codigo) {
+    if (!salas.has(codigo)) return;
+
+    const sala = salas.get(codigo);
+
+    const colorSecreto = {
+        r: Math.floor(Math.random() * 256),
+        g: Math.floor(Math.random() * 256),
+        b: Math.floor(Math.random() * 256),
+    };
+
+    sala.colorActual = colorSecreto;
+    sala.estado = 'mostrando';
+    sala.guesses = {};
+
+    io.to(codigo).emit('faseMostrando', {
+        rondaActual: sala.rondaActual,
+        cantidadRondas: config.ronda.cantidadRondas,
+        duracion: config.ronda.tiempoMostrarColor,
+        color: colorSecreto,
+    });
+
+    console.log(`Sala ${codigo} - ronda ${sala.rondaActual} - color: rgb(${colorSecreto.r}, ${colorSecreto.g}, ${colorSecreto.b})`);
+
+    setTimeout(() => {
+        iniciarFaseDos(codigo);
+    }, config.ronda.tiempoMostrarColor * 1000);
+}
+
+function iniciarFaseDos(codigo) {
+    if (!salas.has(codigo)) return;
+
+    const sala = salas.get(codigo);
+    sala.estado = 'seleccion';
+
+    io.to(codigo).emit('faseSeleccion', {
+        duracion: config.ronda.tiempoSeleccion,
+    });
+
+    console.log(`Sala ${codigo} - ronda ${sala.rondaActual} - fase seleccion`);
+
+    setTimeout(() => {
+        iniciarFaseTres(codigo);
+    }, config.ronda.tiempoSeleccion * 1000);
+}
+
 io.on('connection', (socket) => {
     console.log(`Jugador conectado: ${socket.id}`);
-
-    socket.on('hola', (nombre) => {
-        console.log(`${nombre} dice hola (${socket.id})`);
-        socket.emit('bienvenida', {
-            mensaje: `Hola ${nombre}, estas conectado al servidor`,
-            id: socket.id,
-        });
-    });
 
     socket.on('disconnect', () => {
         console.log(`Jugador desconectado: ${socket.id}`);
@@ -59,6 +98,9 @@ io.on('connection', (socket) => {
             jugadores: [{ id: socket.id, nombre }],
             colorActual: null,
             estado: 'esperando',
+            puntajes: {},
+            rondaActual: 0,
+            guesses: {},
         });
 
         socket.join(codigo);
@@ -89,18 +131,43 @@ io.on('connection', (socket) => {
         socket.join(codigo);
         socket.data.sala = codigo;
 
-        // avisarle solo al nuevo jugador que entró bien
         socket.emit('salaUnida', {
             codigo,
             jugadores: sala.jugadores,
         });
 
-        // avisarle a TODOS los demás que alguien entró
         socket.to(codigo).emit('jugadorUnido', {
             jugadores: sala.jugadores,
         });
 
         console.log(`${nombre} se unió a la sala ${codigo}`);
+    });
+
+    socket.on('iniciarPartida', (codigo) => {
+        if (!salas.has(codigo)) return;
+
+        const sala = salas.get(codigo);
+
+        if (sala.jugadores.length < config.sala.minimoJugadores) {
+            socket.emit('error', { mensaje: `Necesitas al menos ${config.sala.minimoJugadores} jugadores` });
+            return;
+        }
+
+        sala.estado = 'jugando';
+        sala.rondaActual = 1;
+        sala.puntajes = {};
+        sala.jugadores.forEach((j) => (sala.puntajes[j.id] = 0));
+
+        io.to(codigo).emit('partidaIniciada', {
+            cantidadRondas: config.ronda.cantidadRondas,
+            tiempoMostrarColor: config.ronda.tiempoMostrarColor,
+            tiempoSeleccion: config.ronda.tiempoSeleccion,
+            tiempoResultados: config.ronda.tiempoResultados,
+            rondaActual: sala.rondaActual,
+        });
+
+        console.log(`Sala ${codigo} inició partida`);
+        iniciarFaseUno(codigo);
     });
 });
 
