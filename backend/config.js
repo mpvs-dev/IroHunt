@@ -1,6 +1,6 @@
 module.exports = {
   ronda: {
-    cantidadRondas: 5,
+    cantidadRondas: 2,
     tiempoMostrarColor: 5, 
     tiempoSeleccion: 30,
     tiempoResultados: 10,

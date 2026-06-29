@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { socket } from "./socket";
 import Menu from "./screens/Menu";
 import Lobby from "./screens/Lobby";
-
+import Final from "./screens/Final";
+import Game from "./screens/Game";
 function App() {
   const [conectado, setConectado] = useState(false);
   const [sala, setSala] = useState(null);
@@ -14,13 +15,21 @@ function App() {
   const [colorActual, setColorActual] = useState(null);
   const [configPartida, setConfigPartida] = useState(null);
   const [rondaActual, setRondaActual] = useState(null);
+  const [colorGuess, setColorGuess] = useState({ h: 180, s: 50, l: 50 });
+  const [resultados, setResultados] = useState([]);
+  const [colorReal, setColorReal] = useState(null);
+  const [guessEnviado, setGuessEnviado] = useState(false);
+  const [resultadosFinales, setResultadosFinales] = useState([]);
+  const [configModal, setConfigModal] = useState(null);
+  const [miId, setMiId] = useState(null);
+  const esCreador = jugadores.length > 0 && jugadores[0].id === miId;
 
   useEffect(() => {
     socket.connect();
 
     socket.on("connect", () => {
+      setMiId(socket.id);
       setConectado(true);
-      socket.emit("hola", "Jugador");
     });
 
     socket.on("disconnect", () => {
@@ -30,6 +39,7 @@ function App() {
     socket.on("salaCreada", (data) => {
       setSala(data.codigo);
       setJugadores(data.jugadores);
+      setConfigModal(data.config);
       setPantalla("lobby");
     });
 
@@ -54,18 +64,51 @@ function App() {
     });
 
     socket.on("faseMostrando", (data) => {
-      console.log("faseMostrando data:", data);
       setFaseActual("mostrando");
       setDuracionFase(data.duracion);
       setColorActual(data.color);
       setRondaActual(data.rondaActual);
+      setColorGuess({ h: 180, s: 50, l: 50 });
       setPantalla("juego");
+      setGuessEnviado(false);
     });
 
     socket.on("faseSeleccion", (data) => {
       setFaseActual("seleccion");
       setDuracionFase(data.duracion);
-      setColorActual(null); // ← limpia el color para q no lo vean mientras adivinan
+      setColorActual(null);
+
+      setTimeout(() => {
+        setColorGuess((colorActual) => {
+          if (!guessEnviado) socket.emit("enviarGuess", colorActual);
+          return colorActual;
+        });
+      }, data.duracion * 1000);
+    });
+
+    socket.on("faseResultados", (data) => {
+      setFaseActual("resultados");
+      setResultados(data.resultados);
+      setColorReal(data.colorReal);
+      setDuracionFase(data.duracion);
+    });
+
+    socket.on("partidaFinalizada", (data) => {
+      setResultadosFinales(data.resultados);
+      setPantalla("final");
+    });
+
+    socket.on("volverAlLobby", (data) => {
+      setJugadores(data.jugadores);
+      setFaseActual(null);
+      setRondaActual(null);
+      setColorActual(null);
+      setResultados([]);
+      setResultadosFinales([]);
+      setConfigPartida(null);
+      setGuessEnviado(false);
+      setColorGuess({ h: 180, s: 50, l: 50 });
+      setPantalla("lobby");
     });
 
     return () => {
@@ -82,7 +125,20 @@ function App() {
   };
 
   const iniciarPartida = () => {
-    socket.emit("iniciarPartida", sala);
+    socket.emit("iniciarPartida", {
+      codigo: sala,
+      config: configModal,
+    });
+  };
+
+  const enviarGuess = () => {
+    if (guessEnviado) return;
+    socket.emit("enviarGuess", colorGuess);
+    setGuessEnviado(true);
+  };
+
+  const jugarDeNuevo = () => {
+    socket.emit("jugarDeNuevo", sala);
   };
 
   return (
@@ -95,29 +151,27 @@ function App() {
           sala={sala}
           jugadores={jugadores}
           onIniciarPartida={iniciarPartida}
+          esCreador={esCreador}
+          configModal={configModal}
+          onConfigChange={setConfigModal}
         />
       )}
       {pantalla === "juego" && (
-        <div>
-          <p>
-            Ronda {rondaActual} de {configPartida?.cantidadRondas}
-          </p>
-
-          {faseActual === "mostrando" && (
-            <>
-              <div
-                style={{
-                  width: 200,
-                  height: 200,
-                  backgroundColor: `rgb(${colorActual.r}, ${colorActual.g}, ${colorActual.b})`,
-                }}
-              />
-              <p>Memoriza este color</p>
-            </>
-          )}
-
-          {faseActual === "seleccion" && <p>Selecciona el color que viste</p>}
-        </div>
+        <Game
+          faseActual={faseActual}
+          rondaActual={rondaActual}
+          cantidadRondas={configPartida?.cantidadRondas}
+          colorActual={colorActual}
+          colorGuess={colorGuess}
+          onColorChange={setColorGuess}
+          onEnviarGuess={enviarGuess}
+          guessEnviado={guessEnviado}
+          resultados={resultados}
+          colorReal={colorReal}
+        />
+      )}
+      {pantalla === "final" && (
+        <Final resultados={resultadosFinales} onJugarDeNuevo={jugarDeNuevo} />
       )}
     </div>
   );
