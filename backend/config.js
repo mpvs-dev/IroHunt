@@ -1,9 +1,9 @@
 module.exports = {
   ronda: {
-    cantidadRondas: 2,
+    cantidadRondas: 5,
     tiempoMostrarColor: 5,
     tiempoSeleccion: 30,
-    tiempoResultados: 10,
+    tiempoResultados: 7,
   },
   sala: {
     minimoJugadores: 2,
