@@ -18,6 +18,7 @@ const io = new Server(server, {
 
 const salas = new Map();
 const timeouts = new Map();
+const timeoutsReconexion = new Map();
 
 function generarCodigo() {
     const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
@@ -193,6 +194,30 @@ io.on('connection', (socket) => {
                 timeouts.delete(codigo);
                 salas.delete(codigo);
                 console.log(`Sala ${codigo} eliminada`);
+                return;
+            }
+
+            io.to(codigo).emit('jugadorSalió', {
+                jugadores: sala.jugadores,
+            });
+
+            if (sala.creador === socket.id && sala.estado !== 'esperando') {
+                io.to(codigo).emit('creadorDesconectado', {
+                    mensaje: 'El creador se desconectó, esperando reconexión...',
+                });
+
+                const timeoutReconexion = setTimeout(() => {
+                    if (!salas.has(codigo)) return;
+                    clearTimeout(timeouts.get(codigo));
+                    timeouts.delete(codigo);
+                    io.to(codigo).emit('partidaCancelada', {
+                        mensaje: 'El creador no reconectó a tiempo',
+                    });
+                    salas.delete(codigo);
+                    console.log(`Sala ${codigo} cancelada, creador no reconectó`);
+                }, config.reconexion.tiempoEsperaCreador * 1000);
+
+                timeoutsReconexion.set(codigo, timeoutReconexion);
             }
         }
     });
@@ -202,6 +227,7 @@ io.on('connection', (socket) => {
 
         salas.set(codigo, {
             jugadores: [{ id: socket.id, nombre }],
+            creador: socket.id,
             colorActual: null,
             estado: 'esperando',
             puntajes: {},
@@ -211,6 +237,7 @@ io.on('connection', (socket) => {
 
         socket.join(codigo);
         socket.data.sala = codigo;
+        socket.data.nombre = nombre;
 
         socket.emit('salaCreada', {
             codigo,
@@ -221,6 +248,7 @@ io.on('connection', (socket) => {
                 tiempoSeleccion: config.ronda.tiempoSeleccion,
                 tiempoResultados: config.ronda.tiempoResultados,
             },
+            creador: socket.id,
         });
 
         console.log(`Sala ${codigo} creada por ${nombre} (${socket.id})`);
@@ -232,6 +260,12 @@ io.on('connection', (socket) => {
             return;
         }
 
+        const nombreDuplicado = sala.jugadores.some((j) => j.nombre === nombre);
+        if (nombreDuplicado) {
+            socket.emit('error', { mensaje: 'Ya hay un jugador con ese nombre en la sala' });
+            return;
+        }
+
         const sala = salas.get(codigo);
 
         if (sala.estado !== 'esperando') {
@@ -239,9 +273,15 @@ io.on('connection', (socket) => {
             return;
         }
 
+        if (sala.jugadores.length >= config.sala.maximoJugadores) {
+            socket.emit('error', { mensaje: 'La sala está llena' });
+            return;
+        }
+
         sala.jugadores.push({ id: socket.id, nombre });
         socket.join(codigo);
         socket.data.sala = codigo;
+        socket.data.nombre = nombre;
 
         socket.emit('salaUnida', {
             codigo,
@@ -259,6 +299,11 @@ io.on('connection', (socket) => {
         if (!salas.has(codigo)) return;
 
         const sala = salas.get(codigo);
+
+        if (sala.creador !== socket.id) {
+            socket.emit('error', { mensaje: 'Solo el creador puede iniciar la partida' });
+            return;
+        }
 
         if (sala.jugadores.length < config.sala.minimoJugadores) {
             socket.emit('error', { mensaje: `Necesitas al menos ${config.sala.minimoJugadores} jugadores` });
@@ -287,6 +332,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('enviarGuess', (colorGuess) => {
+        if (sala.guesses[socket.id]) {
+            socket.emit('error', { mensaje: 'Ya enviaste tu color' });
+            return;
+        }
+
         const codigo = socket.data.sala;
         if (!codigo || !salas.has(codigo)) return;
 
@@ -318,9 +368,55 @@ io.on('connection', (socket) => {
         io.to(codigo).emit('volverAlLobby', {
             codigo,
             jugadores: sala.jugadores,
+            creador: sala.creador,
         });
 
         console.log(`Sala ${codigo} volvió al lobby`);
+    });
+
+    socket.on('reconectar', (codigo) => {
+        if (!salas.has(codigo)) {
+            socket.emit('error', { mensaje: 'La sala ya no existe' });
+            return;
+        }
+
+        const sala = salas.get(codigo);
+        const jugadorExistente = sala.jugadores.find((j) => j.nombre === socket.data.nombre);
+
+        if (!jugadorExistente) {
+            socket.emit('error', { mensaje: 'No se encontró tu sesión en esta sala' });
+            return;
+        }
+
+        const idAnterior = jugadorExistente.id;
+        jugadorExistente.id = socket.id;
+        socket.join(codigo);
+        socket.data.sala = codigo;
+
+        const puntajeAnterior = sala.puntajes[idAnterior] || 0;
+        delete sala.puntajes[idAnterior];
+        sala.puntajes[socket.id] = puntajeAnterior;
+
+        if (sala.creador === idAnterior) {
+            sala.creador = socket.id;
+            clearTimeout(timeoutsReconexion.get(codigo));
+            timeoutsReconexion.delete(codigo);
+
+            io.to(codigo).emit('creadorReconectado', {
+                jugadores: sala.jugadores,
+                creador: socket.id,
+            });
+        }
+
+        socket.emit('reconectado', {
+            codigo,
+            estado: sala.estado,
+            jugadores: sala.jugadores,
+            rondaActual: sala.rondaActual,
+            creador: sala.creador,
+        });
+
+        console.log(`${jugadorExistente.nombre} reconectado a sala ${codigo}`);
     });
 
 });

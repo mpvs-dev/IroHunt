@@ -23,7 +23,9 @@ function App() {
   const [configModal, setConfigModal] = useState(null);
   const [miId, setMiId] = useState(null);
   const esCreador = jugadores.length > 0 && jugadores[0].id === miId;
-
+  const [creadorId, setCreadorId] = useState(null);
+  const esCreador = miId === creadorId;
+  const [mensajeSistema, setMensajeSistema] = useState(null);
   useEffect(() => {
     socket.connect();
 
@@ -41,6 +43,7 @@ function App() {
       setJugadores(data.jugadores);
       setConfigModal(data.config);
       setPantalla("lobby");
+      setCreadorId(data.creador);
     });
 
     socket.on("salaUnida", (data) => {
@@ -109,6 +112,34 @@ function App() {
       setGuessEnviado(false);
       setColorGuess({ h: 180, s: 50, l: 50 });
       setPantalla("lobby");
+      setCreadorId(data.creador);
+    });
+
+    socket.on("creadorDesconectado", (data) => {
+      // mostrar aviso en pantalla de que el creador se desconectó
+      setMensajeSistema(data.mensaje);
+    });
+
+    socket.on("creadorReconectado", (data) => {
+      setJugadores(data.jugadores);
+      setCreadorId(data.creador);
+      setMensajeSistema(null);
+    });
+
+    socket.on("partidaCancelada", (data) => {
+      setMensajeSistema(data.mensaje);
+      setTimeout(() => {
+        setSala(null);
+        setJugadores([]);
+        setFaseActual(null);
+        setRondaActual(null);
+        setColorActual(null);
+        setResultados([]);
+        setResultadosFinales([]);
+        setConfigPartida(null);
+        setMensajeSistema(null);
+        setPantalla("menu");
+      }, 3000);
     });
 
     return () => {
@@ -143,6 +174,22 @@ function App() {
 
   return (
     <div style={{ padding: 40, fontFamily: "sans-serif" }}>
+      {mensajeSistema && (
+        <div
+          style={{
+            position: "fixed",
+            top: 20,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "rgba(0,0,0,0.8)",
+            color: "white",
+            padding: "12px 24px",
+            borderRadius: 8,
+          }}
+        >
+          {mensajeSistema}
+        </div>
+      )}
       {pantalla === "menu" && (
         <Menu onCrearSala={crearSala} onUnirseSala={unirseSala} />
       )}
