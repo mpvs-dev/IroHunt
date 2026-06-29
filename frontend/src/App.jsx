@@ -4,6 +4,7 @@ import Menu from "./screens/Menu";
 import Lobby from "./screens/Lobby";
 import Final from "./screens/Final";
 import Game from "./screens/Game";
+
 function App() {
   const [conectado, setConectado] = useState(false);
   const [sala, setSala] = useState(null);
@@ -22,7 +23,6 @@ function App() {
   const [resultadosFinales, setResultadosFinales] = useState([]);
   const [configModal, setConfigModal] = useState(null);
   const [miId, setMiId] = useState(null);
-  const esCreador = jugadores.length > 0 && jugadores[0].id === miId;
   const [creadorId, setCreadorId] = useState(null);
   const esCreador = miId === creadorId;
   const [mensajeSistema, setMensajeSistema] = useState(null);
