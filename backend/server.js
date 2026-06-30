@@ -89,7 +89,7 @@ function iniciarFaseUno(codigo) {
         color: colorSecreto,
     });
 
-    console.log(`Sala ${codigo} - ronda ${sala.rondaActual} - color: rgb(${colorSecreto.r}, ${colorSecreto.g}, ${colorSecreto.b})`);
+    console.log(`Sala ${codigo} - ronda ${sala.rondaActual} - color: hsl(${colorSecreto.h}, ${colorSecreto.s}%, ${colorSecreto.l}%)`);
 
     setTimeout(() => {
         iniciarFaseDos(codigo);
@@ -255,19 +255,12 @@ io.on('connection', (socket) => {
     });
 
     socket.on('unirseSala', ({ codigo, nombre }) => {
-
-        const sala = salas.get(codigo);
-
         if (!salas.has(codigo)) {
             socket.emit('error', { mensaje: 'La sala no existe' });
             return;
         }
 
-        const nombreDuplicado = sala.jugadores.some((j) => j.nombre === nombre);
-        if (nombreDuplicado) {
-            socket.emit('error', { mensaje: 'Ya hay un jugador con ese nombre en la sala' });
-            return;
-        }
+        const sala = salas.get(codigo);
 
         if (sala.estado !== 'esperando') {
             socket.emit('error', { mensaje: 'La partida ya empezó' });
@@ -276,6 +269,12 @@ io.on('connection', (socket) => {
 
         if (sala.jugadores.length >= config.sala.maximoJugadores) {
             socket.emit('error', { mensaje: 'La sala está llena' });
+            return;
+        }
+
+        const nombreDuplicado = sala.jugadores.some((j) => j.nombre === nombre);
+        if (nombreDuplicado) {
+            socket.emit('error', { mensaje: 'Ya hay un jugador con ese nombre en la sala' });
             return;
         }
 
@@ -333,16 +332,16 @@ io.on('connection', (socket) => {
     });
 
     socket.on('enviarGuess', (colorGuess) => {
-        if (sala.guesses[socket.id]) {
-            socket.emit('error', { mensaje: 'Ya enviaste tu color' });
-            return;
-        }
-
         const codigo = socket.data.sala;
         if (!codigo || !salas.has(codigo)) return;
 
         const sala = salas.get(codigo);
         if (sala.estado !== 'seleccion') return;
+
+        if (sala.guesses[socket.id]) {
+            socket.emit('error', { mensaje: 'Ya enviaste tu color' });
+            return;
+        }
 
         sala.guesses[socket.id] = colorGuess;
         console.log(`Guess recibido de ${socket.id}: hsl(${colorGuess.h}, ${colorGuess.s}%, ${colorGuess.l}%)`);
