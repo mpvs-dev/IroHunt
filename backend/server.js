@@ -255,6 +255,9 @@ io.on('connection', (socket) => {
     });
 
     socket.on('unirseSala', ({ codigo, nombre }) => {
+
+        const sala = salas.get(codigo);
+
         if (!salas.has(codigo)) {
             socket.emit('error', { mensaje: 'La sala no existe' });
             return;
@@ -265,8 +268,6 @@ io.on('connection', (socket) => {
             socket.emit('error', { mensaje: 'Ya hay un jugador con ese nombre en la sala' });
             return;
         }
-
-        const sala = salas.get(codigo);
 
         if (sala.estado !== 'esperando') {
             socket.emit('error', { mensaje: 'La partida ya empezó' });
