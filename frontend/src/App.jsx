@@ -4,6 +4,7 @@ import Menu from "./screens/Menu";
 import Lobby from "./screens/Lobby";
 import Final from "./screens/Final";
 import Game from "./screens/Game";
+import Creditos from "./components/Creditos";
 
 function App() {
   const [conectado, setConectado] = useState(false);
@@ -26,6 +27,7 @@ function App() {
   const [creadorId, setCreadorId] = useState(null);
   const esCreador = miId === creadorId;
   const [mensajeSistema, setMensajeSistema] = useState(null);
+  
   useEffect(() => {
     socket.connect();
 
@@ -215,11 +217,13 @@ function App() {
           guessEnviado={guessEnviado}
           resultados={resultados}
           colorReal={colorReal}
+          duracionFase={duracionFase}
         />
       )}
       {pantalla === "final" && (
         <Final resultados={resultadosFinales} onJugarDeNuevo={jugarDeNuevo} />
       )}
+      <Creditos />
     </div>
   );
 }

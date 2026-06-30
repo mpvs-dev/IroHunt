@@ -1,0 +1,17 @@
+.creditos {
+  margin-top: auto;
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text);
+  border-top: 1px solid var(--border);
+}
+
+.creditos a {
+  color: #cfcfcf;
+  text-decoration: none;
+}
+
+.creditos a:hover {
+  color: #9d9d9d;
+}

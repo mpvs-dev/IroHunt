@@ -1,0 +1,36 @@
+.timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 200px;
+  margin: 0 auto 16px;
+}
+
+.timer__segundos {
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+.timer__barra {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--code-bg);
+  overflow: hidden;
+}
+
+.timer__progreso {
+  height: 100%;
+  background: var(--accent);
+  transition: width 1s linear;
+}
+
+.timer--urgente .timer__progreso {
+  background: #ff4d4d;
+}
+
+.timer--urgente .timer__segundos {
+  color: #ff4d4d;
+}
