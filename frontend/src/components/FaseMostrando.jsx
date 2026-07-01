@@ -1,10 +1,11 @@
 import ColorBox from "./ColorBox";
+import "../styles/FaseMostrando.css";
 
 function FaseMostrando({ color }) {
   return (
-    <div>
+    <div className="fase-mostrando">
       <ColorBox h={color.h} s={color.s} l={color.l} />
-      <p>Memoriza este color</p>
+      <p className="fase-mostrando__texto">Memoriza este color</p>
     </div>
   );
 }

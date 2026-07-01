@@ -17,7 +17,7 @@ function ConfigModal({ config, onConfigChange, onCerrar }) {
           <label>Cantidad de rondas: {config.cantidadRondas}</label>
           <input
             type="range"
-            min="1"
+            min="2"
             max="10"
             value={config.cantidadRondas}
             onChange={(e) =>

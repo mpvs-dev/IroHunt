@@ -1,19 +1,83 @@
-function Final({ resultados, onJugarDeNuevo }) {
+import ColorBox from "../components/ColorBox";
+import "../styles/Final.css";
+
+function Final({
+  resultados,
+  coloresRondas,
+  cantidadRondas,
+  onVolverMenu,
+  onJugarDeNuevo,
+  sala,
+}) {
   return (
-    <div>
-      <h1>Resultados finales</h1>
+    <main className="final">
+      <div className="final__header">
+        <h1 className="final__titulo">IroHunt</h1>
+        {sala && <span className="final__codigo">({sala})</span>}
+      </div>
+      <h2 className="final__subtitulo">Resultados</h2>
 
-      {resultados.map((j, index) => (
-        <div key={j.id}>
-          <p>
-            #{index + 1} {j.nombre}
-          </p>
-          <p>{j.puntajeTotal} pts</p>
-        </div>
+      <div className="final__tabla-wrapper">
+        <table className="final__tabla">
+          <thead>
+            <tr>
+              <th className="final__celda final__celda--header" />
+              {Array.from({ length: cantidadRondas }, (_, i) => (
+                <th key={i} className="final__celda final__celda--header">
+                  Ronda {i + 1}
+                </th>
+              ))}
+              <th className="final__celda final__celda--header" />
+            </tr>
+          </thead>
+          <tbody>
+            <FilaColores colores={coloresRondas} />
+            {resultados.map((j, i) => (
+              <FilaJugador key={j.id} jugador={j} index={i + 1} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="final__acciones">
+        <button className="final__boton" onClick={onVolverMenu}>
+          Volver al menu
+        </button>
+        <button className="final__boton" onClick={onJugarDeNuevo}>
+          Volver al Jugar
+        </button>
+      </div>
+    </main>
+  );
+}
+
+function FilaColores({ colores }) {
+  return (
+    <tr>
+      <td className="final__celda final__celda--label">Original</td>
+      {colores.map((c, i) => (
+        <td key={i} className="final__celda">
+          <ColorBox h={c.h} s={c.s} l={c.l} size={60} />
+        </td>
       ))}
+      <td className="final__celda final__celda--puntaje-header" />
+    </tr>
+  );
+}
 
-      <button onClick={onJugarDeNuevo}>Jugar de nuevo</button>
-    </div>
+function FilaJugador({ jugador, index }) {
+  return (
+    <tr>
+      <td className="final__celda final__celda--label">Participante {index}</td>
+      {jugador.guessesRondas.map((g, i) => (
+        <td key={i} className="final__celda">
+          <ColorBox h={g.h} s={g.s} l={g.l} size={60} />
+        </td>
+      ))}
+      <td className="final__celda final__celda--puntaje">
+        {jugador.puntajeTotal} pts
+      </td>
+    </tr>
   );
 }
 

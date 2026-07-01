@@ -1,0 +1,11 @@
+.fase-mostrando {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.fase-mostrando__texto {
+  font-size: 16px;
+  color: var(--text);
+}

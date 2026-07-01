@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+// src/screens/Menu.jsx
+import { useState } from "react";
+import "../styles/Menu.css";
 
 function Menu({ onCrearSala, onUnirseSala }) {
   const [nombre, setNombre] = useState("");
@@ -15,25 +17,37 @@ function Menu({ onCrearSala, onUnirseSala }) {
   };
 
   return (
-    <div>
-      <h1>IroHunt</h1>
+    <main className="menu">
+      <h1 className="menu__titulo">IroHunt</h1>
 
-      <input
-        placeholder="Tu nombre"
-        value={nombre}
-        onChange={(e) => setNombre(e.target.value)}
-      />
+      <div className="menu__formulario">
+        <div className="menu__seccion">
+          <input
+            className="menu__input"
+            placeholder="Ingrese su nombre"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+          />
+          <button className="menu__boton" onClick={handleCrear}>
+            Crear Sala
+          </button>
+        </div>
 
-      <button onClick={handleCrear}>Crear sala</button>
+        <div className="menu__divisor" />
 
-      <input
-        placeholder="Codigo de sala"
-        value={codigo}
-        onChange={(e) => setCodigo(e.target.value)}
-      />
-
-      <button onClick={handleUnirse}>Unirse</button>
-    </div>
+        <div className="menu__seccion">
+          <input
+            className="menu__input"
+            placeholder="Ingrese el codigo"
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value)}
+          />
+          <button className="menu__boton" onClick={handleUnirse}>
+            Unirse
+          </button>
+        </div>
+      </div>
+    </main>
   );
 }
 

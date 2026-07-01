@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { socket } from "./socket";
 import Menu from "./screens/Menu";
 import Lobby from "./screens/Lobby";
@@ -27,7 +27,15 @@ function App() {
   const [creadorId, setCreadorId] = useState(null);
   const esCreador = miId === creadorId;
   const [mensajeSistema, setMensajeSistema] = useState(null);
-  
+  const [coloresRondas, setColoresRondas] = useState([]);
+  const [cantidadRondas, setCantidadRondas] = useState(null);
+  const guessEnviadoRef = useState(false);
+  const colorGuessRef = useRef(colorGuess);
+
+  useEffect(() => {
+    colorGuessRef.current = colorGuess;
+  }, [colorGuess]);
+
   useEffect(() => {
     socket.connect();
 
@@ -51,6 +59,7 @@ function App() {
     socket.on("salaUnida", (data) => {
       setSala(data.codigo);
       setJugadores(data.jugadores);
+      setCreadorId(data.creador);
       setPantalla("lobby");
     });
 
@@ -76,6 +85,7 @@ function App() {
       setColorGuess({ h: 180, s: 50, l: 50 });
       setPantalla("juego");
       setGuessEnviado(false);
+      guessEnviadoRef.current = false;
     });
 
     socket.on("faseSeleccion", (data) => {
@@ -83,12 +93,16 @@ function App() {
       setDuracionFase(data.duracion);
       setColorActual(null);
 
-      setTimeout(() => {
-        setColorGuess((colorActual) => {
-          if (!guessEnviado) socket.emit("enviarGuess", colorActual);
-          return colorActual;
-        });
-      }, data.duracion * 1000);
+      setTimeout(
+        () => {
+          if (!guessEnviadoRef.current) {
+            socket.emit("enviarGuess", colorGuessRef.current);
+            setGuessEnviado(true);
+            guessEnviadoRef.current = true;
+          }
+        },
+        (data.duracion - 1) * 1000,
+      );
     });
 
     socket.on("faseResultados", (data) => {
@@ -100,6 +114,8 @@ function App() {
 
     socket.on("partidaFinalizada", (data) => {
       setResultadosFinales(data.resultados);
+      setColoresRondas(data.coloresRondas);
+      setCantidadRondas(data.cantidadRondas);
       setPantalla("final");
     });
 
@@ -112,6 +128,7 @@ function App() {
       setResultadosFinales([]);
       setConfigPartida(null);
       setGuessEnviado(false);
+      guessEnviadoRef.current = false;
       setColorGuess({ h: 180, s: 50, l: 50 });
       setPantalla("lobby");
       setCreadorId(data.creador);
@@ -165,13 +182,32 @@ function App() {
   };
 
   const enviarGuess = () => {
-    if (guessEnviado) return;
+    if (guessEnviadoRef.current) return;
     socket.emit("enviarGuess", colorGuess);
     setGuessEnviado(true);
+    guessEnviadoRef.current = true;
   };
 
   const jugarDeNuevo = () => {
     socket.emit("jugarDeNuevo", sala);
+  };
+
+  const salirPartida = () => {
+    setPantalla("menu");
+    setSala(null);
+    socket.disconnect();
+    socket.connect();
+  };
+
+  const volverAlMenu = () => {
+    socket.disconnect();
+    socket.connect();
+    setSala(null);
+    setJugadores([]);
+    setResultadosFinales([]);
+    setColoresRondas([]);
+    setCantidadRondas(null);
+    setPantalla("menu");
   };
 
   return (
@@ -203,6 +239,9 @@ function App() {
           esCreador={esCreador}
           configModal={configModal}
           onConfigChange={setConfigModal}
+          isCreador={esCreador}
+          creadorId={creadorId}
+          onSalir={salirPartida}
         />
       )}
       {pantalla === "juego" && (
@@ -218,10 +257,19 @@ function App() {
           resultados={resultados}
           colorReal={colorReal}
           duracionFase={duracionFase}
+          onSalir={salirPartida}
+          sala={sala}
         />
       )}
       {pantalla === "final" && (
-        <Final resultados={resultadosFinales} onJugarDeNuevo={jugarDeNuevo} />
+        <Final
+          resultados={resultadosFinales}
+          coloresRondas={coloresRondas}
+          cantidadRondas={cantidadRondas}
+          onVolverMenu={volverAlMenu}
+          onJugarDeNuevo={jugarDeNuevo}
+          sala={sala}
+        />
       )}
       <Creditos />
     </div>

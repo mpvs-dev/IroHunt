@@ -1,13 +1,17 @@
 import { useState } from "react";
+import TarjetaJugador from "../components/TarjetaJugador";
 import ConfigModal from "../components/configModal";
+import "../styles/Lobby.css";
 
 function Lobby({
   sala,
   jugadores,
   onIniciarPartida,
   esCreador,
+  creadorId,
   configModal,
   onConfigChange,
+  onSalir,
 }) {
   const [copiado, setCopiado] = useState(false);
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -19,30 +23,56 @@ function Lobby({
   };
 
   return (
-    <div>
-      <h1>Lobby</h1>
+    <main className="lobby">
+      <div className="lobby__top">
+        <h1 className="lobby__titulo">IroHunt</h1>
+        <button className="lobby__boton lobby__boton--salir" onClick={onSalir}>
+          Salir
+        </button>
+      </div>
+      <div className="lobby__codigo-row">
+        <div className="lobby__codigo">{sala}</div>
+        <button className="lobby__boton" onClick={copiarCodigo}>
+          {copiado ? "Copiado!" : "Copiar Codigo"}
+        </button>
+      </div>
 
-      <p>
-        Código: <strong>{sala}</strong>
-      </p>
-      <button onClick={copiarCodigo}>
-        {copiado ? "Copiado!" : "Copiar código"}
-      </button>
+      <div className="lobby__jugadores-header">
+        <span className="lobby__jugadores-titulo">Jugadores</span>
+        {esCreador && (
+          <button
+            className="lobby__boton"
+            onClick={() => setModalAbierto(true)}
+          >
+            Configuracion
+          </button>
+        )}
+      </div>
 
-      <h2>Jugadores ({jugadores.length})</h2>
-      <ul>
+      <div className="lobby__grid">
         {jugadores.map((j) => (
-          <li key={j.id}>{j.nombre}</li>
+          <TarjetaJugador
+            key={j.id}
+            jugador={j}
+            esCreador={j.id === creadorId}
+          />
         ))}
-      </ul>
+      </div>
+
       {esCreador && (
-        <>
-          <button onClick={() => setModalAbierto(true)}>Configuración</button>
-          <button onClick={onIniciarPartida}>Iniciar partida</button>
-        </>
+        <button
+          className="lobby__boton lobby__boton--iniciar"
+          onClick={onIniciarPartida}
+        >
+          Iniciar Partida
+        </button>
       )}
 
-      {!esCreador && <p>Esperando que el creador inicie la partida...</p>}
+      {!esCreador && (
+        <p className="lobby__esperando">
+          Esperando que el creador inicie la partida...
+        </p>
+      )}
 
       {modalAbierto && (
         <ConfigModal
@@ -51,7 +81,7 @@ function Lobby({
           onCerrar={() => setModalAbierto(false)}
         />
       )}
-    </div>
+    </main>
   );
 }
 

@@ -78,6 +78,7 @@ function iniciarFaseUno(codigo) {
         l: Math.floor(Math.random() * 101),
     };
 
+    sala.historialColores.push(colorSecreto);
     sala.colorActual = colorSecreto;
     sala.estado = 'mostrando';
     sala.guesses = {};
@@ -135,6 +136,11 @@ function iniciarFaseTres(codigo) {
         };
     });
 
+    sala.jugadores.forEach((j) => {
+        if (!sala.historialGuesses[j.id]) sala.historialGuesses[j.id] = [];
+        sala.historialGuesses[j.id].push(sala.guesses[j.id] || { h: 0, s: 0, l: 0 });
+    });
+
     resultadosRonda.sort((a, b) => b.puntajeTotal - a.puntajeTotal);
 
     io.to(codigo).emit('faseResultados', {
@@ -172,10 +178,13 @@ function iniciarFaseFinal(codigo) {
         .sort((a, b) => b.puntajeTotal - a.puntajeTotal);
 
     io.to(codigo).emit('partidaFinalizada', {
-        resultados: resultadosFinales,
+        resultados: resultadosFinales.map((j) => ({
+            ...j,
+            guessesRondas: sala.historialGuesses[j.id] || [],
+        })),
+        coloresRondas: sala.historialColores,
+        cantidadRondas: sala.config.cantidadRondas,
     });
-
-    console.log(`Sala ${codigo} finalizada`);
 }
 
 io.on('connection', (socket) => {
@@ -233,6 +242,8 @@ io.on('connection', (socket) => {
             puntajes: {},
             rondaActual: 0,
             guesses: {},
+            historialColores: [],
+            historialGuesses: {},
         });
 
         socket.join(codigo);
@@ -286,6 +297,7 @@ io.on('connection', (socket) => {
         socket.emit('salaUnida', {
             codigo,
             jugadores: sala.jugadores,
+            creador: sala.creador,
         });
 
         socket.to(codigo).emit('jugadorUnido', {
@@ -363,6 +375,8 @@ io.on('connection', (socket) => {
         sala.colorActual = null;
         sala.guesses = {};
         sala.puntajes = {};
+        sala.historialColores = [];
+        sala.historialGuesses = {};
         sala.jugadores.forEach((j) => (sala.puntajes[j.id] = 0));
 
         io.to(codigo).emit('volverAlLobby', {
