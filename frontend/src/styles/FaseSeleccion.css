@@ -8,18 +8,20 @@
 
 .fase-seleccion__boton {
   padding: 12px 36px;
-  border-radius: 6px;
-  border: none;
-  background: var(--accent);
-  color: white;
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
   transition: opacity 0.2s;
+  background: #1a1a1a;
+  color: #f7f5f0;
+  border: none;
+  border-radius: 2px;
+  letter-spacing: 1.5px;
+  font-family: Georgia, serif;
 }
 
 .fase-seleccion__boton:hover:not(:disabled) {
-  opacity: 0.85;
+  opacity: 0.75;
 }
 
 .fase-seleccion__boton:disabled {

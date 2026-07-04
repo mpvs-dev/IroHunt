@@ -100,18 +100,20 @@
 
 .final__boton {
   padding: 12px 28px;
-  border-radius: 6px;
-  border: none;
-  background: var(--accent);
-  color: white;
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
   transition: opacity 0.2s;
+  background: #1a1a1a;
+  color: #f7f5f0;
+  border: none;
+  border-radius: 2px;
+  letter-spacing: 1.5px;
+  font-family: Georgia, serif;
 }
 
 .final__boton:hover {
-  opacity: 0.85;
+  opacity: 0.75;
 }
 
 @media (max-width: 480px) {
