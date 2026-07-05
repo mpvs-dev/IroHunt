@@ -1,17 +1,59 @@
 .creditos {
-  margin-top: auto;
-  padding: 16px;
-  text-align: center;
-  font-size: 13px;
-  color: var(--text);
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--bg);
   border-top: 1px solid var(--border);
+  box-sizing: border-box;
+  z-index: 10;
 }
 
-.creditos a {
-  color: #cfcfcf;
+.creditos__kofi {
+  display: inline-block;
+  color: #fff !important;
+  border-radius: 2px;
+  font-family: Georgia, serif;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.creditos__kofi:hover {
+  opacity: 0.8;
+}
+
+.creditos__separador {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+}
+
+.creditos__mpvs {
+  font-size: 13px;
+  color: var(--text);
   text-decoration: none;
 }
 
-.creditos a:hover {
-  color: #9d9d9d;
+.creditos__mpvs:hover {
+  opacity: 0.8;
+}
+
+@media (max-width: 480px) {
+  .creditos {
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .creditos__kofi {
+    padding: 6px 14px;
+    font-size: 12px;
+  }
 }
