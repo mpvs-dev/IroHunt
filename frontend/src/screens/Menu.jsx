@@ -46,15 +46,6 @@ function Menu({ onCrearSala, onUnirseSala }) {
 
   return (
     <>
-      <div className="menu__blobs" aria-hidden="true">
-        <span className="menu__blob menu__blob--1" />
-        <span className="menu__blob menu__blob--2" />
-        <span className="menu__blob menu__blob--3" />
-        <span className="menu__blob menu__blob--4" />
-        <span className="menu__blob menu__blob--5" />
-        <span className="menu__blob menu__blob--6" />
-      </div>
-
       <main className="menu">
         <div className="menu__hero">
           <h1 className="menu__titulo">IroHunt</h1>

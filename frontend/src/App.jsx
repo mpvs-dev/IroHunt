@@ -5,6 +5,7 @@ import Lobby from "./screens/Lobby";
 import Final from "./screens/Final";
 import Game from "./screens/Game";
 import Creditos from "./components/Creditos";
+import Fondo from "./components/Fondo";
 
 function App() {
   const [conectado, setConectado] = useState(false);
@@ -31,6 +32,7 @@ function App() {
   const [cantidadRondas, setCantidadRondas] = useState(null);
   const guessEnviadoRef = useState(false);
   const colorGuessRef = useRef(colorGuess);
+  const atenuarFondo = pantalla === "juego";
 
   useEffect(() => {
     colorGuessRef.current = colorGuess;
@@ -211,7 +213,8 @@ function App() {
   };
 
   return (
-    <div style={{ padding: 40, fontFamily: "sans-serif" }}>
+    <div style={{ padding: 40, paddingBottom: 90, fontFamily: "sans-serif" }}>
+      <Fondo atenuado={atenuarFondo} />
       {mensajeSistema && (
         <div
           style={{

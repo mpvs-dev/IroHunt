@@ -1,21 +1,72 @@
-function ConfigModal({ config, onConfigChange, onCerrar }) {
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <div style={{ background: "white", padding: 32, borderRadius: 8 }}>
-        <h2>Configuración</h2>
+import "../styles/ConfigModal.css";
 
-        <div>
-          <label>Cantidad de rondas: {config.cantidadRondas}</label>
+const PRESETS = [
+  {
+    nombre: "Fácil",
+    tiempoMostrarColor: 10,
+    tiempoSeleccion: 45,
+    tiempoResultados: 10,
+  },
+  {
+    nombre: "Normal",
+    tiempoMostrarColor: 5,
+    tiempoSeleccion: 30,
+    tiempoResultados: 10,
+  },
+  {
+    nombre: "Difícil",
+    tiempoMostrarColor: 3,
+    tiempoSeleccion: 15,
+    tiempoResultados: 5,
+  },
+];
+
+function esPresetActivo(config, preset) {
+  return (
+    config.tiempoMostrarColor === preset.tiempoMostrarColor &&
+    config.tiempoSeleccion === preset.tiempoSeleccion &&
+    config.tiempoResultados === preset.tiempoResultados
+  );
+}
+
+function ConfigModal({ config, onConfigChange, onCerrar }) {
+  const aplicarPreset = (preset) => {
+    onConfigChange({
+      ...config,
+      tiempoMostrarColor: preset.tiempoMostrarColor,
+      tiempoSeleccion: preset.tiempoSeleccion,
+      tiempoResultados: preset.tiempoResultados,
+    });
+  };
+
+  return (
+    <div className="config-modal__overlay">
+      <div className="config-modal">
+        <h2 className="config-modal__titulo">Configuración</h2>
+
+        <div className="config-modal__presets">
+          {PRESETS.map((preset) => (
+            <button
+              key={preset.nombre}
+              className={`config-modal__preset${
+                esPresetActivo(config, preset)
+                  ? " config-modal__preset--activo"
+                  : ""
+              }`}
+              onClick={() => aplicarPreset(preset)}
+            >
+              {preset.nombre}
+            </button>
+          ))}
+        </div>
+
+        <div className="config-modal__campo">
+          <label className="config-modal__label">
+            Cantidad de rondas
+            <span className="config-modal__valor">{config.cantidadRondas}</span>
+          </label>
           <input
+            className="config-modal__slider"
             type="range"
             min="2"
             max="10"
@@ -29,9 +80,15 @@ function ConfigModal({ config, onConfigChange, onCerrar }) {
           />
         </div>
 
-        <div>
-          <label>Tiempo mostrar color: {config.tiempoMostrarColor}s</label>
+        <div className="config-modal__campo">
+          <label className="config-modal__label">
+            Tiempo mostrar color
+            <span className="config-modal__valor">
+              {config.tiempoMostrarColor}s
+            </span>
+          </label>
           <input
+            className="config-modal__slider"
             type="range"
             min="3"
             max="15"
@@ -45,9 +102,15 @@ function ConfigModal({ config, onConfigChange, onCerrar }) {
           />
         </div>
 
-        <div>
-          <label>Tiempo selección: {config.tiempoSeleccion}s</label>
+        <div className="config-modal__campo">
+          <label className="config-modal__label">
+            Tiempo selección
+            <span className="config-modal__valor">
+              {config.tiempoSeleccion}s
+            </span>
+          </label>
           <input
+            className="config-modal__slider"
             type="range"
             min="10"
             max="60"
@@ -61,9 +124,15 @@ function ConfigModal({ config, onConfigChange, onCerrar }) {
           />
         </div>
 
-        <div>
-          <label>Tiempo resultados: {config.tiempoResultados}s</label>
+        <div className="config-modal__campo">
+          <label className="config-modal__label">
+            Tiempo resultados
+            <span className="config-modal__valor">
+              {config.tiempoResultados}s
+            </span>
+          </label>
           <input
+            className="config-modal__slider"
             type="range"
             min="5"
             max="20"
@@ -77,7 +146,9 @@ function ConfigModal({ config, onConfigChange, onCerrar }) {
           />
         </div>
 
-        <button onClick={onCerrar}>Cerrar</button>
+        <button className="config-modal__cerrar" onClick={onCerrar}>
+          Cerrar
+        </button>
       </div>
     </div>
   );

@@ -3,6 +3,14 @@ import TarjetaJugador from "../components/TarjetaJugador";
 import ConfigModal from "../components/configModal";
 import "../styles/Lobby.css";
 
+function formatDuracion(segundos) {
+  const minutos = Math.floor(segundos / 60);
+  const segs = segundos % 60;
+  if (minutos === 0) return `${segs}s`;
+  if (segs === 0) return `${minutos} min`;
+  return `${minutos} min ${segs}s`;
+}
+
 function Lobby({
   sala,
   jugadores,
@@ -22,6 +30,13 @@ function Lobby({
     setTimeout(() => setCopiado(false), 2000);
   };
 
+  const segundosTotales = configModal
+    ? (configModal.tiempoMostrarColor +
+        configModal.tiempoSeleccion +
+        configModal.tiempoResultados) *
+      configModal.cantidadRondas
+    : 0;
+
   return (
     <main className="lobby">
       <div className="lobby__top">
@@ -32,19 +47,32 @@ function Lobby({
       </div>
       <div className="lobby__codigo-row">
         <div className="lobby__codigo">{sala}</div>
-        <button className="lobby__boton" onClick={copiarCodigo}>
+        <button
+          className="lobby__boton lobby__boton--outline"
+          onClick={copiarCodigo}
+        >
           {copiado ? "Copiado!" : "Copiar Codigo"}
         </button>
       </div>
 
       <div className="lobby__jugadores-header">
         <span className="lobby__jugadores-titulo">Jugadores</span>
+        {configModal && (
+          <span
+            className="lobby__duracion"
+            title="Duración estimada de la partida"
+          >
+            ⏱ ~{formatDuracion(segundosTotales)}
+          </span>
+        )}
         {esCreador && (
           <button
-            className="lobby__boton"
+            className="lobby__boton-icono"
             onClick={() => setModalAbierto(true)}
+            aria-label="Configuración"
+            title="Configuración"
           >
-            Configuracion
+            ⚙
           </button>
         )}
       </div>
