@@ -62,6 +62,7 @@ function App() {
       setSala(data.codigo);
       setJugadores(data.jugadores);
       setCreadorId(data.creador);
+      setConfigModal(data.config);
       setPantalla("lobby");
     });
 
@@ -163,6 +164,35 @@ function App() {
       }, 3000);
     });
 
+    socket.on("jugadorExpulsado", (data) => {
+      setJugadores(data.jugadores);
+    });
+
+    socket.on("fuisteExpulsado", () => {
+      setMensajeSistema("Fuiste expulsado de la sala");
+      setTimeout(() => {
+        setSala(null);
+        setJugadores([]);
+        setPantalla("menu");
+        setMensajeSistema(null);
+        socket.disconnect();
+        socket.connect();
+      }, 2500);
+    });
+
+    socket.on("avatarActualizado", (data) => {
+      setJugadores(data.jugadores);
+    });
+
+    socket.on("error", (data) => {
+      setMensajeSistema(data.mensaje);
+      setTimeout(() => setMensajeSistema(null), 2500);
+    });
+
+    socket.on("configActualizada", (data) => {
+      setConfigModal(data.config);
+    });
+
     return () => {
       socket.off();
     };
@@ -212,6 +242,18 @@ function App() {
     setPantalla("menu");
   };
 
+  const expulsarJugador = (jugadorId) => {
+    socket.emit("expulsarJugador", { codigo: sala, jugadorId });
+  };
+
+  const cambiarAvatar = (avatarId) => {
+    socket.emit("cambiarAvatar", { codigo: sala, avatarId });
+  };
+
+  const actualizarConfig = (nuevaConfig) => {
+    setConfigModal(nuevaConfig);
+    socket.emit("actualizarConfig", { codigo: sala, config: nuevaConfig });
+  };
   return (
     <div style={{ padding: 40, paddingBottom: 90, fontFamily: "sans-serif" }}>
       <Fondo atenuado={atenuarFondo} />
@@ -241,10 +283,13 @@ function App() {
           onIniciarPartida={iniciarPartida}
           esCreador={esCreador}
           configModal={configModal}
-          onConfigChange={setConfigModal}
+          onConfigChange={actualizarConfig}
           isCreador={esCreador}
           creadorId={creadorId}
           onSalir={salirPartida}
+          miId={miId}
+          onExpulsarJugador={expulsarJugador}
+          onCambiarAvatar={cambiarAvatar}
         />
       )}
       {pantalla === "juego" && (

@@ -1,0 +1,35 @@
+.avatar-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.avatar-modal__opcion {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-h);
+  background: var(--accent-bg);
+  border: 1px solid var(--border);
+  border-radius: 45% 55% 60% 40% / 50% 45% 55% 50%;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.avatar-modal__opcion:hover:not(:disabled) {
+  transform: scale(1.08);
+}
+
+.avatar-modal__opcion--activo {
+  background: var(--code-bg);
+  border: 2px solid #1a1a1a;
+}
+
+.avatar-modal__opcion--tomado {
+  opacity: 0.3;
+  cursor: not-allowed;
+}

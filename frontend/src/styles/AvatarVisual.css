@@ -1,0 +1,4 @@
+.avatar-visual__imagen {
+  object-fit: cover;
+  border-radius: inherit;
+}

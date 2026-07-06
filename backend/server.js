@@ -4,6 +4,7 @@ const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
 const config = require("./config.js");
+const { availableMemory } = require('process');
 
 const PORT = process.env.PORT || 3001;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
@@ -19,6 +20,11 @@ const io = new Server(server, {
 const salas = new Map();
 const timeouts = new Map();
 const timeoutsReconexion = new Map();
+
+function asignarAvatarDisponible(sala) {
+    const usados = new Set(sala.jugadores.map((j) => j.avatarId).filter(Boolean));
+    return config.avatares.idsDisponibles.find((id) => !usados.has(id)) ?? null;
+}
 
 function generarCodigo() {
     const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
@@ -235,7 +241,7 @@ io.on('connection', (socket) => {
         const codigo = generarCodigo();
 
         salas.set(codigo, {
-            jugadores: [{ id: socket.id, nombre }],
+            jugadores: [{ id: socket.id, nombre, avatarId: config.avatares.idsDisponibles[0] }],
             creador: socket.id,
             colorActual: null,
             estado: 'esperando',
@@ -244,6 +250,12 @@ io.on('connection', (socket) => {
             guesses: {},
             historialColores: [],
             historialGuesses: {},
+            config: {
+                cantidadRondas: config.ronda.cantidadRondas,
+                tiempoMostrarColor: config.ronda.tiempoMostrarColor,
+                tiempoSeleccion: config.ronda.tiempoSeleccion,
+                tiempoResultados: config.ronda.tiempoResultados,
+            },
         });
 
         socket.join(codigo);
@@ -289,8 +301,8 @@ io.on('connection', (socket) => {
             return;
         }
 
-        sala.jugadores.push({ id: socket.id, nombre });
-        socket.join(codigo);
+        const avatarAsignado = asignarAvatarDisponible(sala);
+        sala.jugadores.push({ id: socket.id, nombre, avatarId: avatarAsignado }); socket.join(codigo);
         socket.data.sala = codigo;
         socket.data.nombre = nombre;
 
@@ -298,6 +310,7 @@ io.on('connection', (socket) => {
             codigo,
             jugadores: sala.jugadores,
             creador: sala.creador,
+            config: sala.config,
         });
 
         socket.to(codigo).emit('jugadorUnido', {
@@ -433,6 +446,65 @@ io.on('connection', (socket) => {
         console.log(`${jugadorExistente.nombre} reconectado a sala ${codigo}`);
     });
 
+    socket.on('expulsarJugador', ({ codigo, jugadorId }) => {
+        if (!salas.has(codigo)) return;
+        const sala = salas.get(codigo);
+
+        if (sala.creador !== socket.id) {
+            socket.emit('error', { mensaje: 'Solo el creador puede expulsar jugadores' });
+            return;
+        }
+
+        if (sala.estado !== 'esperando') {
+            socket.emit('error', { mensaje: 'No se puede expulsar durante la partida' });
+            return;
+        }
+
+        if (jugadorId === socket.id) return;
+
+        const jugador = sala.jugadores.find((j) => j.id === jugadorId);
+        if (!jugador) return;
+
+        sala.jugadores = sala.jugadores.filter((j) => j.id !== jugadorId);
+
+        io.to(jugadorId).emit('fuisteExpulsado');
+        const socketExpulsado = io.sockets.sockets.get(jugadorId);
+        if (socketExpulsado) socketExpulsado.leave(codigo);
+
+        io.to(codigo).emit('jugadorExpulsado', { jugadores: sala.jugadores });
+
+        console.log(`${jugador.nombre} fue expulsado de la sala ${codigo}`);
+    });
+
+    socket.on('cambiarAvatar', ({ codigo, avatarId }) => {
+        if (!salas.has(codigo)) return;
+        const sala = salas.get(codigo);
+
+        const jugador = sala.jugadores.find((j) => j.id === socket.id);
+        if (!jugador) return;
+
+        const enUso = sala.jugadores.some(
+            (j) => j.id !== socket.id && j.avatarId === avatarId
+        );
+        if (enUso) {
+            socket.emit('error', { mensaje: 'Ese avatar ya está en uso' });
+            return;
+        }
+
+        jugador.avatarId = avatarId;
+        io.to(codigo).emit('avatarActualizado', { jugadores: sala.jugadores });
+    });
+
+    socket.on('actualizarConfig', ({ codigo, config: nuevaConfig }) => {
+        if (!salas.has(codigo)) return;
+        const sala = salas.get(codigo);
+
+        if (sala.creador !== socket.id) return;
+        if (sala.estado !== 'esperando') return;
+
+        sala.config = { ...sala.config, ...nuevaConfig };
+        io.to(codigo).emit('configActualizada', { config: sala.config });
+    });
 });
 
 server.listen(PORT, () => {

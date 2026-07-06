@@ -3,7 +3,7 @@ module.exports = {
     cantidadRondas: 5,
     tiempoMostrarColor: 5,
     tiempoSeleccion: 30,
-    tiempoResultados: 7,
+    tiempoResultados: 10,
   },
   sala: {
     minimoJugadores: 2,
@@ -11,5 +11,8 @@ module.exports = {
   },
   reconexion: {
     tiempoEsperaCreador: 60,
+  },
+  avatares: {
+    idsDisponibles: ['av1', 'av2', 'av3', 'av4', 'av5', 'av6', 'av7', 'av8'],
   },
 };

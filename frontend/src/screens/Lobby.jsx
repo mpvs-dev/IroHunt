@@ -1,6 +1,7 @@
 import { useState } from "react";
 import TarjetaJugador from "../components/TarjetaJugador";
 import ConfigModal from "../components/configModal";
+import AvatarModal from "../components/AvatarModal";
 import "../styles/Lobby.css";
 
 function formatDuracion(segundos) {
@@ -17,12 +18,16 @@ function Lobby({
   onIniciarPartida,
   esCreador,
   creadorId,
+  miId,
   configModal,
   onConfigChange,
   onSalir,
+  onExpulsarJugador,
+  onCambiarAvatar,
 }) {
   const [copiado, setCopiado] = useState(false);
   const [modalAbierto, setModalAbierto] = useState(false);
+  const [avatarModalAbierto, setAvatarModalAbierto] = useState(false);
 
   const copiarCodigo = () => {
     navigator.clipboard.writeText(sala);
@@ -36,6 +41,8 @@ function Lobby({
         configModal.tiempoResultados) *
       configModal.cantidadRondas
     : 0;
+
+  const miJugador = jugadores.find((j) => j.id === miId);
 
   return (
     <main className="lobby">
@@ -83,6 +90,10 @@ function Lobby({
             key={j.id}
             jugador={j}
             esCreador={j.id === creadorId}
+            esUno={j.id === miId}
+            puedeExpulsar={esCreador && j.id !== miId}
+            onExpulsar={onExpulsarJugador}
+            onEditarAvatar={() => setAvatarModalAbierto(true)}
           />
         ))}
       </div>
@@ -107,6 +118,16 @@ function Lobby({
           config={configModal}
           onConfigChange={onConfigChange}
           onCerrar={() => setModalAbierto(false)}
+        />
+      )}
+
+      {avatarModalAbierto && (
+        <AvatarModal
+          avatarActual={miJugador?.avatarId}
+          jugadores={jugadores}
+          miId={miId}
+          onSeleccionar={onCambiarAvatar}
+          onCerrar={() => setAvatarModalAbierto(false)}
         />
       )}
     </main>

@@ -57,3 +57,59 @@
   border-radius: 999px;
   font-style: italic;
 }
+
+.tarjeta-jugador {
+  position: relative;
+}
+
+.tarjeta-jugador__expulsar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(139, 0, 0, 0.08);
+  color: #8b0000;
+  border: 1px solid rgba(139, 0, 0, 0.3);
+  border-radius: 50%;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.tarjeta-jugador__expulsar:hover {
+  background: #8b0000;
+  color: #fff;
+}
+
+.tarjeta-jugador__avatar-wrap {
+  position: relative;
+}
+
+.tarjeta-jugador__editar-avatar {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a1a;
+  color: #f7f5f0;
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  font-size: 10px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.tarjeta-jugador__editar-avatar:hover {
+  transform: scale(1.15);
+}
