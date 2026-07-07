@@ -73,9 +73,35 @@ function calcularPuntaje(colorReal, colorGuess) {
     return Math.round(cercania * 1000);
 }
 
-function iniciarFaseUno(codigo) {
+function iniciarTemporizadorFase(codigo, evento, duracion, datosExtra, alFinalizar) {
     if (!salas.has(codigo)) return;
 
+    let restante = duracion;
+
+    io.to(codigo).emit(evento, { ...datosExtra, duracion, segundosRestantes: restante });
+
+    const intervalo = setInterval(() => {
+        if (!salas.has(codigo)) {
+            clearInterval(intervalo);
+            return;
+        }
+
+        restante--;
+
+        if (restante > 0) {
+            io.to(codigo).emit('tick', { segundosRestantes: restante });
+        } else {
+            clearInterval(intervalo);
+            timeouts.delete(codigo);
+            alFinalizar(codigo);
+        }
+    }, 1000);
+
+    timeouts.set(codigo, intervalo);
+}
+
+function iniciarFaseUno(codigo) {
+    if (!salas.has(codigo)) return;
     const sala = salas.get(codigo);
 
     const colorSecreto = {
@@ -89,42 +115,39 @@ function iniciarFaseUno(codigo) {
     sala.estado = 'mostrando';
     sala.guesses = {};
 
-    io.to(codigo).emit('faseMostrando', {
-        rondaActual: sala.rondaActual,
-        cantidadRondas: sala.config.cantidadRondas,
-        duracion: sala.config.tiempoMostrarColor,
-        color: colorSecreto,
-    });
-
     console.log(`Sala ${codigo} - ronda ${sala.rondaActual} - color: hsl(${colorSecreto.h}, ${colorSecreto.s}%, ${colorSecreto.l}%)`);
 
-    setTimeout(() => {
-        iniciarFaseDos(codigo);
-    }, sala.config.tiempoMostrarColor * 1000);
+    iniciarTemporizadorFase(
+        codigo,
+        'faseMostrando',
+        sala.config.tiempoMostrarColor,
+        {
+            rondaActual: sala.rondaActual,
+            cantidadRondas: sala.config.cantidadRondas,
+            color: colorSecreto,
+        },
+        iniciarFaseDos
+    );
 }
 
 function iniciarFaseDos(codigo) {
     if (!salas.has(codigo)) return;
-
     const sala = salas.get(codigo);
     sala.estado = 'seleccion';
 
-    io.to(codigo).emit('faseSeleccion', {
-        duracion: sala.config.tiempoSeleccion,
-    });
-
     console.log(`Sala ${codigo} - ronda ${sala.rondaActual} - fase seleccion`);
 
-    const timeout = setTimeout(() => {
-        iniciarFaseTres(codigo);
-    }, sala.config.tiempoSeleccion * 1000);
-
-    timeouts.set(codigo, timeout);
+    iniciarTemporizadorFase(
+        codigo,
+        'faseSeleccion',
+        sala.config.tiempoSeleccion,
+        {},
+        iniciarFaseTres
+    );
 }
 
 function iniciarFaseTres(codigo) {
     if (!salas.has(codigo)) return;
-
     const sala = salas.get(codigo);
     sala.estado = 'resultados';
 
@@ -149,24 +172,27 @@ function iniciarFaseTres(codigo) {
 
     resultadosRonda.sort((a, b) => b.puntajeTotal - a.puntajeTotal);
 
-    io.to(codigo).emit('faseResultados', {
-        colorReal: sala.colorActual,
-        resultados: resultadosRonda,
-        duracion: sala.config.tiempoResultados,
-        rondaActual: sala.rondaActual,
-        cantidadRondas: sala.config.cantidadRondas,
-    });
-
     console.log(`Sala ${codigo} - ronda ${sala.rondaActual} - resultados enviados`);
 
-    setTimeout(() => {
-        if (sala.rondaActual < sala.config.cantidadRondas) {
-            sala.rondaActual++;
-            iniciarFaseUno(codigo);
-        } else {
-            iniciarFaseFinal(codigo);
+    iniciarTemporizadorFase(
+        codigo,
+        'faseResultados',
+        sala.config.tiempoResultados,
+        {
+            colorReal: sala.colorActual,
+            resultados: resultadosRonda,
+            rondaActual: sala.rondaActual,
+            cantidadRondas: sala.config.cantidadRondas,
+        },
+        (cod) => {
+            if (sala.rondaActual < sala.config.cantidadRondas) {
+                sala.rondaActual++;
+                iniciarFaseUno(cod);
+            } else {
+                iniciarFaseFinal(cod);
+            }
         }
-    }, sala.config.tiempoResultados * 1000);
+    );
 }
 
 function iniciarFaseFinal(codigo) {
@@ -205,7 +231,7 @@ io.on('connection', (socket) => {
             sala.jugadores = sala.jugadores.filter((j) => j.id !== socket.id);
 
             if (sala.jugadores.length === 0) {
-                clearTimeout(timeouts.get(codigo));
+                clearInterval(timeouts.get(codigo));
                 timeouts.delete(codigo);
                 salas.delete(codigo);
                 console.log(`Sala ${codigo} eliminada`);
@@ -363,17 +389,12 @@ io.on('connection', (socket) => {
         const sala = salas.get(codigo);
         if (sala.estado !== 'seleccion') return;
 
-        if (sala.guesses[socket.id]) {
-            socket.emit('error', { mensaje: 'Ya enviaste tu color' });
-            return;
-        }
-
         sala.guesses[socket.id] = colorGuess;
         console.log(`Guess recibido de ${socket.id}: hsl(${colorGuess.h}, ${colorGuess.s}%, ${colorGuess.l}%)`);
 
         const todosRespondieron = sala.jugadores.every((j) => sala.guesses[j.id]);
         if (todosRespondieron) {
-            clearTimeout(timeouts.get(codigo));
+            clearInterval(timeouts.get(codigo));
             timeouts.delete(codigo);
             iniciarFaseTres(codigo);
         }
@@ -504,6 +525,10 @@ io.on('connection', (socket) => {
 
         sala.config = { ...sala.config, ...nuevaConfig };
         io.to(codigo).emit('configActualizada', { config: sala.config });
+    });
+
+    socket.on('sincronizarReloj', (tiempoCliente, callback) => {
+        callback({ tiempoServidor: Date.now(), tiempoCliente });
     });
 });
 

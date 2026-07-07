@@ -9,10 +9,12 @@ function Game({
   rondaActual,
   cantidadRondas,
   duracionFase,
+  segundosRestantes,
   colorActual,
   colorGuess,
   onColorChange,
   onEnviarGuess,
+  onEditarGuess,
   guessEnviado,
   resultados,
   colorReal,
@@ -36,7 +38,7 @@ function Game({
 
       <Timer
         duracion={duracionFase}
-        resetKey={`${faseActual}-${rondaActual}`}
+        segundosRestantes={segundosRestantes}
       />
 
       <div className="game__contenido">
@@ -46,6 +48,7 @@ function Game({
             colorGuess={colorGuess}
             onColorChange={onColorChange}
             onEnviar={onEnviarGuess}
+            onEditar={onEditarGuess}
             guessEnviado={guessEnviado}
           />
         )}

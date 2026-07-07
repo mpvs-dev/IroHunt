@@ -2,12 +2,16 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
+  gap: 28px;
   width: 100%;
 }
 
 .fase-resultados__titulo {
   margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-weight: 600;
+  color: var(--text-h);
 }
 
 .fase-resultados__original {
@@ -25,7 +29,7 @@
 
 .fase-resultados__grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   width: 100%;
   max-width: 640px;
@@ -36,12 +40,28 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  padding: 16px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.35);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
+}
+
+.tarjeta-resultado:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
 }
 
 .tarjeta-resultado__nombre {
   font-size: 14px;
   font-weight: 500;
   color: var(--text-h);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tarjeta-resultado__puntos {

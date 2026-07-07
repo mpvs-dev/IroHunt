@@ -2,8 +2,18 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 24px;
   width: 100%;
+}
+
+.fase-seleccion__selector {
+  width: 100%;
+  transition: opacity 0.2s ease;
+}
+
+.fase-seleccion__selector--bloqueado {
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 .fase-seleccion__boton {
@@ -11,11 +21,14 @@
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition:
+    opacity 0.2s,
+    background 0.2s,
+    color 0.2s;
   background: #1a1a1a;
   color: #f7f5f0;
   border: none;
-  border-radius: 2px;
+  border-radius: 8px;
   letter-spacing: 1.5px;
   font-family: Georgia, serif;
 }
@@ -27,6 +40,17 @@
 .fase-seleccion__boton:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.fase-seleccion__boton--enviado {
+  background: transparent;
+  color: var(--text-h);
+  border: 1px solid var(--accent-border);
+}
+
+.fase-seleccion__boton--enviado:hover {
+  background: var(--accent-bg);
+  opacity: 1;
 }
 
 @media (max-width: 480px) {

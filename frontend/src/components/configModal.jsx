@@ -1,25 +1,5 @@
 import "../styles/ConfigModal.css";
-
-const PRESETS = [
-  {
-    nombre: "Fácil",
-    tiempoMostrarColor: 10,
-    tiempoSeleccion: 45,
-    tiempoResultados: 10,
-  },
-  {
-    nombre: "Normal",
-    tiempoMostrarColor: 5,
-    tiempoSeleccion: 30,
-    tiempoResultados: 10,
-  },
-  {
-    nombre: "Difícil",
-    tiempoMostrarColor: 3,
-    tiempoSeleccion: 15,
-    tiempoResultados: 5,
-  },
-];
+import { LIMITES_CONFIG, PRESETS } from "../constants/configJuego";
 
 function esPresetActivo(config, preset) {
   return (
@@ -68,8 +48,8 @@ function ConfigModal({ config, onConfigChange, onCerrar }) {
           <input
             className="config-modal__slider"
             type="range"
-            min="2"
-            max="10"
+            min={LIMITES_CONFIG.cantidadRondas.min}
+            max={LIMITES_CONFIG.cantidadRondas.max}
             value={config.cantidadRondas}
             onChange={(e) =>
               onConfigChange({
@@ -90,8 +70,8 @@ function ConfigModal({ config, onConfigChange, onCerrar }) {
           <input
             className="config-modal__slider"
             type="range"
-            min="3"
-            max="15"
+            min={LIMITES_CONFIG.tiempoMostrarColor.min}
+            max={LIMITES_CONFIG.tiempoMostrarColor.max}
             value={config.tiempoMostrarColor}
             onChange={(e) =>
               onConfigChange({
@@ -112,8 +92,8 @@ function ConfigModal({ config, onConfigChange, onCerrar }) {
           <input
             className="config-modal__slider"
             type="range"
-            min="10"
-            max="60"
+            min={LIMITES_CONFIG.tiempoSeleccion.min}
+            max={LIMITES_CONFIG.tiempoSeleccion.max}
             value={config.tiempoSeleccion}
             onChange={(e) =>
               onConfigChange({
@@ -134,8 +114,8 @@ function ConfigModal({ config, onConfigChange, onCerrar }) {
           <input
             className="config-modal__slider"
             type="range"
-            min="5"
-            max="20"
+            min={LIMITES_CONFIG.tiempoResultados.min}
+            max={LIMITES_CONFIG.tiempoResultados.max}
             value={config.tiempoResultados}
             onChange={(e) =>
               onConfigChange({

@@ -33,6 +33,12 @@ function App() {
   const guessEnviadoRef = useState(false);
   const colorGuessRef = useRef(colorGuess);
   const atenuarFondo = pantalla === "juego";
+  const [segundosRestantes, setSegundosRestantes] = useState(null);
+  const faseActualRef = useRef(faseActual);
+
+  useEffect(() => {
+    faseActualRef.current = faseActual;
+  }, [faseActual]);
 
   useEffect(() => {
     colorGuessRef.current = colorGuess;
@@ -83,6 +89,7 @@ function App() {
     socket.on("faseMostrando", (data) => {
       setFaseActual("mostrando");
       setDuracionFase(data.duracion);
+      setSegundosRestantes(data.segundosRestantes);
       setColorActual(data.color);
       setRondaActual(data.rondaActual);
       setColorGuess({ h: 180, s: 50, l: 50 });
@@ -94,18 +101,8 @@ function App() {
     socket.on("faseSeleccion", (data) => {
       setFaseActual("seleccion");
       setDuracionFase(data.duracion);
+      setSegundosRestantes(data.segundosRestantes);
       setColorActual(null);
-
-      setTimeout(
-        () => {
-          if (!guessEnviadoRef.current) {
-            socket.emit("enviarGuess", colorGuessRef.current);
-            setGuessEnviado(true);
-            guessEnviadoRef.current = true;
-          }
-        },
-        (data.duracion - 1) * 1000,
-      );
     });
 
     socket.on("faseResultados", (data) => {
@@ -113,6 +110,21 @@ function App() {
       setResultados(data.resultados);
       setColorReal(data.colorReal);
       setDuracionFase(data.duracion);
+      setSegundosRestantes(data.segundosRestantes);
+    });
+
+    socket.on("tick", (data) => {
+      setSegundosRestantes(data.segundosRestantes);
+
+      if (
+        faseActualRef.current === "seleccion" &&
+        data.segundosRestantes <= 1 &&
+        !guessEnviadoRef.current
+      ) {
+        socket.emit("enviarGuess", colorGuessRef.current);
+        setGuessEnviado(true);
+        guessEnviadoRef.current = true;
+      }
     });
 
     socket.on("partidaFinalizada", (data) => {
@@ -214,10 +226,14 @@ function App() {
   };
 
   const enviarGuess = () => {
-    if (guessEnviadoRef.current) return;
     socket.emit("enviarGuess", colorGuess);
     setGuessEnviado(true);
     guessEnviadoRef.current = true;
+  };
+
+  const editarGuess = () => {
+    setGuessEnviado(false);
+    guessEnviadoRef.current = false;
   };
 
   const jugarDeNuevo = () => {
@@ -301,10 +317,12 @@ function App() {
           colorGuess={colorGuess}
           onColorChange={setColorGuess}
           onEnviarGuess={enviarGuess}
+          onEditarGuess={editarGuess}
           guessEnviado={guessEnviado}
           resultados={resultados}
           colorReal={colorReal}
           duracionFase={duracionFase}
+          segundosRestantes={segundosRestantes}
           onSalir={salirPartida}
           sala={sala}
         />

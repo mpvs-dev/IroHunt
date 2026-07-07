@@ -1,16 +1,12 @@
-import useCountdown from "../hooks/useCountdown";
 import "../styles/Timer.css";
 
-/**
- * @param {number} duracion - Duración total en segundos.
- * @param {string|number} resetKey - Clave que reinicia el timer al cambiar.
- */
-function Timer({ duracion, resetKey }) {
-  const segundosRestantes = useCountdown(duracion, resetKey);
-
+function Timer({ duracion, segundosRestantes }) {
   if (!duracion) return null;
 
-  const porcentaje = (segundosRestantes / duracion) * 100;
+  const porcentaje = Math.min(
+    100,
+    Math.max(0, (segundosRestantes / duracion) * 100),
+  );
   const enUrgencia = segundosRestantes <= 3;
 
   return (
