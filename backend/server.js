@@ -168,6 +168,10 @@ function iniciarFaseTres(codigo) {
     sala.jugadores.forEach((j) => {
         if (!sala.historialGuesses[j.id]) sala.historialGuesses[j.id] = [];
         sala.historialGuesses[j.id].push(sala.guesses[j.id] || { h: 0, s: 0, l: 0 });
+
+        if (!sala.historialPuntajes[j.id]) sala.historialPuntajes[j.id] = [];
+        const puntajeRondaJugador = resultadosRonda.find((r) => r.id === j.id)?.puntajeRonda ?? 0;
+        sala.historialPuntajes[j.id].push(puntajeRondaJugador);
     });
 
     resultadosRonda.sort((a, b) => b.puntajeTotal - a.puntajeTotal);
@@ -213,6 +217,7 @@ function iniciarFaseFinal(codigo) {
         resultados: resultadosFinales.map((j) => ({
             ...j,
             guessesRondas: sala.historialGuesses[j.id] || [],
+            puntajesRondas: sala.historialPuntajes[j.id] || [],
         })),
         coloresRondas: sala.historialColores,
         cantidadRondas: sala.config.cantidadRondas,
@@ -276,6 +281,7 @@ io.on('connection', (socket) => {
             guesses: {},
             historialColores: [],
             historialGuesses: {},
+            historialPuntajes: {},
             config: {
                 cantidadRondas: config.ronda.cantidadRondas,
                 tiempoMostrarColor: config.ronda.tiempoMostrarColor,
@@ -411,6 +417,7 @@ io.on('connection', (socket) => {
         sala.puntajes = {};
         sala.historialColores = [];
         sala.historialGuesses = {};
+        sala.historialPuntajes = {};
         sala.jugadores.forEach((j) => (sala.puntajes[j.id] = 0));
 
         io.to(codigo).emit('volverAlLobby', {

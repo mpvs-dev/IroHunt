@@ -32,15 +32,18 @@ function Final({
           </thead>
           <tbody>
             <FilaColores colores={coloresRondas} />
-            {resultados.map((j, i) => (
-              <FilaJugador key={j.id} jugador={j} index={i + 1} />
+            {resultados.map((j) => (
+              <FilaJugador key={j.id} jugador={j} />
             ))}
           </tbody>
         </table>
       </div>
 
       <div className="final__acciones">
-        <button className="final__boton" onClick={onVolverMenu}>
+        <button
+          className="final__boton final__boton--outline"
+          onClick={onVolverMenu}
+        >
           Volver al menu
         </button>
         <button className="final__boton" onClick={onJugarDeNuevo}>
@@ -57,7 +60,15 @@ function FilaColores({ colores }) {
       <td className="final__celda final__celda--label">Original</td>
       {colores.map((c, i) => (
         <td key={i} className="final__celda">
-          <ColorBox h={c.h} s={c.s} l={c.l} size={60} />
+          <div className="final__celda-contenido">
+            <ColorBox
+              h={c.h}
+              s={c.s}
+              l={c.l}
+              size={60}
+              className="final__swatch"
+            />
+          </div>
         </td>
       ))}
       <td className="final__celda final__celda--puntaje-header" />
@@ -65,13 +76,24 @@ function FilaColores({ colores }) {
   );
 }
 
-function FilaJugador({ jugador, index }) {
+function FilaJugador({ jugador }) {
   return (
     <tr>
-      <td className="final__celda final__celda--label">Participante {index}</td>
+      <td className="final__celda final__celda--label">{jugador.nombre}</td>
       {jugador.guessesRondas.map((g, i) => (
         <td key={i} className="final__celda">
-          <ColorBox h={g.h} s={g.s} l={g.l} size={60} />
+          <div className="final__celda-contenido">
+            <ColorBox
+              h={g.h}
+              s={g.s}
+              l={g.l}
+              size={60}
+              className="final__swatch"
+            />
+            <span className="final__puntaje-ronda">
+              {jugador.puntajesRondas?.[i] ?? 0} pts
+            </span>
+          </div>
         </td>
       ))}
       <td className="final__celda final__celda--puntaje">

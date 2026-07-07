@@ -3,17 +3,24 @@
   flex-direction: column;
   align-items: center;
   padding: 32px 20px;
-  gap: 20px;
+  gap: 28px;
   box-sizing: border-box;
   width: 100%;
 }
 
 .final__titulo {
   margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 42px;
+  letter-spacing: 0.5px;
+  color: var(--text-h);
 }
 
 .final__subtitulo {
   margin: 0;
+  color: var(--text-h);
 }
 
 .final__tabla-wrapper {
@@ -33,6 +40,13 @@
   vertical-align: middle;
 }
 
+.final__celda-contenido {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
 .final__celda--header {
   font-size: 13px;
   font-weight: 500;
@@ -44,7 +58,7 @@
 .final__celda--label {
   position: sticky;
   left: 0;
-  background: var(--bg);
+  background: transparent;
   z-index: 1;
   font-size: 13px;
   color: var(--text);
@@ -57,7 +71,7 @@
 .final__celda--puntaje {
   position: sticky;
   right: 0;
-  background: var(--bg);
+  background: transparent;
   z-index: 1;
   font-size: 13px;
   font-weight: 600;
@@ -70,14 +84,14 @@
 .final__celda--puntaje-header {
   position: sticky;
   right: 0;
-  background: var(--bg);
+  background: transparent;
 }
 
 .final__header {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .final__codigo {
@@ -85,8 +99,8 @@
   font-size: 12px;
   color: var(--text);
   background: var(--code-bg);
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 4px 12px;
+  border-radius: 999px;
   letter-spacing: 1px;
 }
 
@@ -99,15 +113,17 @@
 }
 
 .final__boton {
-  padding: 12px 28px;
+  padding: 12px 32px;
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition:
+    opacity 0.2s,
+    background 0.2s;
   background: #1a1a1a;
   color: #f7f5f0;
   border: none;
-  border-radius: 2px;
+  border-radius: 999px;
   letter-spacing: 1.5px;
   font-family: Georgia, serif;
 }
@@ -116,9 +132,41 @@
   opacity: 0.75;
 }
 
+.final__boton--outline {
+  background: transparent;
+  color: var(--text-h);
+  border: 1px solid var(--accent-border);
+}
+
+.final__boton--outline:hover {
+  background: var(--accent-bg);
+  opacity: 1;
+}
+
+.final__puntaje-ronda {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+}
+
 @media (max-width: 480px) {
+  .final__titulo {
+    font-size: 32px;
+  }
+
   .final__boton {
     width: 100%;
     max-width: 320px;
+  }
+}
+
+.final__tabla .final__swatch {
+  width: clamp(28px, 9vw, 60px);
+  height: clamp(28px, 9vw, 60px);
+}
+
+@media (max-width: 480px) {
+  .final__celda {
+    padding: 6px;
   }
 }

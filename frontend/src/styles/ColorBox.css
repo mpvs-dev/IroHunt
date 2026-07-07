@@ -1,0 +1,7 @@
+.color-box {
+  width: var(--color-box-size);
+  height: var(--color-box-size);
+  border-radius: 45% 55% 60% 40% / 50% 45% 55% 50%;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
