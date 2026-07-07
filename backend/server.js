@@ -73,9 +73,18 @@ function calcularPuntaje(colorReal, colorGuess) {
     return Math.round(cercania * 1000);
 }
 
+const MARGEN_FIN_FASE = 350;
+
+function finalizarFaseConGracia(codigo, alFinalizar) {
+    if (!salas.has(codigo)) return;
+    io.to(codigo).emit('tick', { segundosRestantes: 0 });
+    setTimeout(() => {
+        if (salas.has(codigo)) alFinalizar(codigo);
+    }, MARGEN_FIN_FASE);
+}
+
 function iniciarTemporizadorFase(codigo, evento, duracion, datosExtra, alFinalizar) {
     if (!salas.has(codigo)) return;
-
     let restante = duracion;
 
     io.to(codigo).emit(evento, { ...datosExtra, duracion, segundosRestantes: restante });
@@ -90,25 +99,58 @@ function iniciarTemporizadorFase(codigo, evento, duracion, datosExtra, alFinaliz
 
         if (restante > 0) {
             io.to(codigo).emit('tick', { segundosRestantes: restante });
+            return;
+        }
+
+        clearInterval(intervalo);
+        timeouts.delete(codigo);
+        finalizarFaseConGracia(codigo, alFinalizar);
+    }, 1000);
+
+    timeouts.set(codigo, intervalo);
+}
+
+function iniciarCuentaAtras(codigo, duracion = 3) {
+    if (!salas.has(codigo)) return;
+    let restante = duracion;
+
+    io.to(codigo).emit('cuentaAtras', { segundosRestantes: restante });
+
+    const intervalo = setInterval(() => {
+        if (!salas.has(codigo)) {
+            clearInterval(intervalo);
+            return;
+        }
+
+        restante--;
+
+        if (restante > 0) {
+            io.to(codigo).emit('cuentaAtras', { segundosRestantes: restante });
         } else {
             clearInterval(intervalo);
             timeouts.delete(codigo);
-            alFinalizar(codigo);
+            iniciarFaseUno(codigo);
         }
     }, 1000);
 
     timeouts.set(codigo, intervalo);
 }
 
+function generarColorSecreto() {
+    const { saturacionMin, saturacionMax, luminosidadMin, luminosidadMax } = config.color;
+
+    return {
+        h: Math.floor(Math.random() * 361),
+        s: Math.floor(saturacionMin + Math.random() * (saturacionMax - saturacionMin + 1)),
+        l: Math.floor(luminosidadMin + Math.random() * (luminosidadMax - luminosidadMin + 1)),
+    };
+}
+
 function iniciarFaseUno(codigo) {
     if (!salas.has(codigo)) return;
     const sala = salas.get(codigo);
 
-    const colorSecreto = {
-        h: Math.floor(Math.random() * 361),
-        s: Math.floor(Math.random() * 101),
-        l: Math.floor(Math.random() * 101),
-    };
+    const colorSecreto = generarColorSecreto();
 
     sala.historialColores.push(colorSecreto);
     sala.colorActual = colorSecreto;
@@ -385,7 +427,7 @@ io.on('connection', (socket) => {
         });
 
         console.log(`Sala ${codigo} inició partida`);
-        iniciarFaseUno(codigo);
+        iniciarCuentaAtras(codigo);
     });
 
     socket.on('enviarGuess', (colorGuess) => {
@@ -396,13 +438,13 @@ io.on('connection', (socket) => {
         if (sala.estado !== 'seleccion') return;
 
         sala.guesses[socket.id] = colorGuess;
-        console.log(`Guess recibido de ${socket.id}: hsl(${colorGuess.h}, ${colorGuess.s}%, ${colorGuess.l}%)`);
 
         const todosRespondieron = sala.jugadores.every((j) => sala.guesses[j.id]);
-        if (todosRespondieron) {
+
+        if (todosRespondieron && timeouts.has(codigo)) {
             clearInterval(timeouts.get(codigo));
             timeouts.delete(codigo);
-            iniciarFaseTres(codigo);
+            finalizarFaseConGracia(codigo, iniciarFaseTres);
         }
     });
 

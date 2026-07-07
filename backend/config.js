@@ -15,4 +15,10 @@ module.exports = {
   avatares: {
     idsDisponibles: ['av1', 'av2', 'av3', 'av4', 'av5', 'av6', 'av7', 'av8'],
   },
+  color: {
+    saturacionMin: 35,
+    saturacionMax: 100,
+    luminosidadMin: 15,
+    luminosidadMax: 85,
+  },
 };

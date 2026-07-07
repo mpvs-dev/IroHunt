@@ -6,7 +6,7 @@ import Final from "./screens/Final";
 import Game from "./screens/Game";
 import Creditos from "./components/Creditos";
 import Fondo from "./components/Fondo";
-
+import CuentaAtras from "./components/CuentaAtras";
 function App() {
   const [conectado, setConectado] = useState(false);
   const [sala, setSala] = useState(null);
@@ -35,6 +35,7 @@ function App() {
   const atenuarFondo = pantalla === "juego";
   const [segundosRestantes, setSegundosRestantes] = useState(null);
   const faseActualRef = useRef(faseActual);
+  const [cuentaAtras, setCuentaAtras] = useState(null);
 
   useEffect(() => {
     faseActualRef.current = faseActual;
@@ -118,7 +119,7 @@ function App() {
 
       if (
         faseActualRef.current === "seleccion" &&
-        data.segundosRestantes <= 1 &&
+        data.segundosRestantes === 0 &&
         !guessEnviadoRef.current
       ) {
         socket.emit("enviarGuess", colorGuessRef.current);
@@ -203,6 +204,11 @@ function App() {
 
     socket.on("configActualizada", (data) => {
       setConfigModal(data.config);
+    });
+
+    socket.on("cuentaAtras", (data) => {
+      setCuentaAtras(data.segundosRestantes);
+      setPantalla("cuentaAtras");
     });
 
     return () => {
@@ -307,6 +313,9 @@ function App() {
           onExpulsarJugador={expulsarJugador}
           onCambiarAvatar={cambiarAvatar}
         />
+      )}
+      {pantalla === "cuentaAtras" && (
+        <CuentaAtras numero={cuentaAtras} sala={sala} />
       )}
       {pantalla === "juego" && (
         <Game
