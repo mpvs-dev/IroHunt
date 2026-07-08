@@ -4,6 +4,7 @@ module.exports = {
     tiempoMostrarColor: 5,
     tiempoSeleccion: 30,
     tiempoResultados: 10,
+    cantidadColores: 1,
   },
   distracciones: {
     movimiento: false,

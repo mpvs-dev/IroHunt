@@ -1,3 +1,4 @@
+import { useState } from "react";
 import ColorBox from "../components/ColorBox";
 import "../styles/Final.css";
 
@@ -9,6 +10,16 @@ function Final({
   onJugarDeNuevo,
   sala,
 }) {
+  const [indiceJugador, setIndiceJugador] = useState(0);
+
+  const cantidadJugadores = resultados.length;
+  const jugador = resultados[indiceJugador];
+
+  const anterior = () =>
+    setIndiceJugador((i) => (i - 1 + cantidadJugadores) % cantidadJugadores);
+
+  const siguiente = () => setIndiceJugador((i) => (i + 1) % cantidadJugadores);
+
   return (
     <main className="final">
       <div className="final__header">
@@ -17,27 +28,89 @@ function Final({
       </div>
       <h2 className="final__subtitulo">Resultados</h2>
 
-      <div className="final__tabla-wrapper">
-        <table className="final__tabla">
-          <thead>
-            <tr>
-              <th className="final__celda final__celda--header" />
-              {Array.from({ length: cantidadRondas }, (_, i) => (
-                <th key={i} className="final__celda final__celda--header">
-                  Ronda {i + 1}
-                </th>
-              ))}
-              <th className="final__celda final__celda--header" />
-            </tr>
-          </thead>
-          <tbody>
-            <FilaColores colores={coloresRondas} />
-            {resultados.map((j) => (
-              <FilaJugador key={j.id} jugador={j} />
+      <section className="final__seccion">
+        <h3 className="final__seccion-titulo">Colores originales</h3>
+        <div className="final__rondas-grid">
+          {coloresRondas.map((coloresRonda, i) => (
+            <div key={i} className="final__ronda-item">
+              <span className="final__ronda-label">Ronda {i + 1}</span>
+              <div className="final__fila-colores">
+                {coloresRonda.map((c, j) => (
+                  <ColorBox
+                    key={j}
+                    h={c.h}
+                    s={c.s}
+                    l={c.l}
+                    size={50}
+                    className="final__swatch"
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {jugador && (
+        <section className="final__seccion">
+          <div className="final__carrusel-nav">
+            {cantidadJugadores > 1 && (
+              <button
+                className="final__color-flecha"
+                onClick={anterior}
+                aria-label="Jugador anterior"
+              >
+                ‹
+              </button>
+            )}
+
+            <div className="final__carrusel-info">
+              <span className="final__carrusel-nombre">{jugador.nombre}</span>
+              {cantidadJugadores > 1 && (
+                <span className="final__carrusel-indice">
+                  Jugador {indiceJugador + 1}/{cantidadJugadores}
+                </span>
+              )}
+              <span className="final__carrusel-total">
+                {jugador.puntajeTotal} pts totales
+              </span>
+            </div>
+
+            {cantidadJugadores > 1 && (
+              <button
+                className="final__color-flecha"
+                onClick={siguiente}
+                aria-label="Jugador siguiente"
+              >
+                ›
+              </button>
+            )}
+          </div>
+
+          <div className="final__rondas-grid">
+            {jugador.guessesRondas.map((guessesRonda, i) => (
+              <div key={i} className="final__ronda-item">
+                <span className="final__ronda-label">Ronda {i + 1}</span>
+                <div className="final__fila-colores">
+                  {guessesRonda.map((g, j) => (
+                    <ColorBox
+                      key={j}
+                      h={g.h}
+                      s={g.s}
+                      l={g.l}
+                      size={50}
+                      className="final__swatch"
+                    />
+                  ))}
+                </div>
+                <span className="final__puntaje-ronda">
+                  {jugador.puntajesRondas?.[i] ?? 0} pts
+                </span>
+              </div>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </section>
+      )}
 
       <div className="final__acciones">
         <button
@@ -51,55 +124,6 @@ function Final({
         </button>
       </div>
     </main>
-  );
-}
-
-function FilaColores({ colores }) {
-  return (
-    <tr>
-      <td className="final__celda final__celda--label">Original</td>
-      {colores.map((c, i) => (
-        <td key={i} className="final__celda">
-          <div className="final__celda-contenido">
-            <ColorBox
-              h={c.h}
-              s={c.s}
-              l={c.l}
-              size={60}
-              className="final__swatch"
-            />
-          </div>
-        </td>
-      ))}
-      <td className="final__celda final__celda--puntaje-header" />
-    </tr>
-  );
-}
-
-function FilaJugador({ jugador }) {
-  return (
-    <tr>
-      <td className="final__celda final__celda--label">{jugador.nombre}</td>
-      {jugador.guessesRondas.map((g, i) => (
-        <td key={i} className="final__celda">
-          <div className="final__celda-contenido">
-            <ColorBox
-              h={g.h}
-              s={g.s}
-              l={g.l}
-              size={60}
-              className="final__swatch"
-            />
-            <span className="final__puntaje-ronda">
-              {jugador.puntajesRondas?.[i] ?? 0} pts
-            </span>
-          </div>
-        </td>
-      ))}
-      <td className="final__celda final__celda--puntaje">
-        {jugador.puntajeTotal} pts
-      </td>
-    </tr>
   );
 }
 

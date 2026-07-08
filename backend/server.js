@@ -138,7 +138,6 @@ function iniciarCuentaAtras(codigo, duracion = 3) {
 
 function generarColorSecreto() {
     const { saturacionMin, saturacionMax, luminosidadMin, luminosidadMax } = config.color;
-
     return {
         h: Math.floor(Math.random() * 361),
         s: Math.floor(saturacionMin + Math.random() * (saturacionMax - saturacionMin + 1)),
@@ -146,27 +145,38 @@ function generarColorSecreto() {
     };
 }
 
+function calcularPuntajeMultiple(coloresReales, guessesArray) {
+    if (!Array.isArray(guessesArray) || guessesArray.length === 0) return 0;
+    const puntajes = coloresReales.map((real, i) =>
+        calcularPuntaje(real, guessesArray[i] || { h: 0, s: 0, l: 0 })
+    );
+    return Math.round(puntajes.reduce((a, b) => a + b, 0) / puntajes.length);
+}
+
 function iniciarFaseUno(codigo) {
     if (!salas.has(codigo)) return;
     const sala = salas.get(codigo);
 
-    const colorSecreto = generarColorSecreto();
+    const coloresSecretos = Array.from(
+        { length: sala.config.cantidadColores },
+        () => generarColorSecreto()
+    );
 
-    sala.historialColores.push(colorSecreto);
-    sala.colorActual = colorSecreto;
+    sala.historialColores.push(coloresSecretos); // ahora es array de arrays
+    sala.coloresActuales = coloresSecretos;
     sala.estado = 'mostrando';
     sala.guesses = {};
 
-    console.log(`Sala ${codigo} - ronda ${sala.rondaActual} - color: hsl(${colorSecreto.h}, ${colorSecreto.s}%, ${colorSecreto.l}%)`);
+    console.log(`Sala ${codigo} - ronda ${sala.rondaActual} - ${coloresSecretos.length} color(es)`);
 
     iniciarTemporizadorFase(
         codigo,
         'faseMostrando',
-        sala.config.tiempoMostrarColor,
+        sala.config.tiempoMostrarColor, // se muestran todos juntos, no se multiplica
         {
             rondaActual: sala.rondaActual,
             cantidadRondas: sala.config.cantidadRondas,
-            color: colorSecreto,
+            colores: coloresSecretos,
         },
         iniciarFaseDos
     );
@@ -194,14 +204,14 @@ function iniciarFaseTres(codigo) {
     sala.estado = 'resultados';
 
     const resultadosRonda = sala.jugadores.map((j) => {
-        const guess = sala.guesses[j.id] || { h: 0, s: 0, l: 0 };
-        const puntajeRonda = calcularPuntaje(sala.colorActual, guess);
+        const guesses = sala.guesses[j.id] || sala.coloresActuales.map(() => ({ h: 0, s: 0, l: 0 }));
+        const puntajeRonda = calcularPuntajeMultiple(sala.coloresActuales, guesses);
         sala.puntajes[j.id] += puntajeRonda;
 
         return {
             id: j.id,
             nombre: j.nombre,
-            colorGuess: guess,
+            coloresGuess: guesses, // array
             puntajeRonda,
             puntajeTotal: sala.puntajes[j.id],
         };
@@ -209,7 +219,9 @@ function iniciarFaseTres(codigo) {
 
     sala.jugadores.forEach((j) => {
         if (!sala.historialGuesses[j.id]) sala.historialGuesses[j.id] = [];
-        sala.historialGuesses[j.id].push(sala.guesses[j.id] || { h: 0, s: 0, l: 0 });
+        sala.historialGuesses[j.id].push(
+            sala.guesses[j.id] || sala.coloresActuales.map(() => ({ h: 0, s: 0, l: 0 }))
+        );
 
         if (!sala.historialPuntajes[j.id]) sala.historialPuntajes[j.id] = [];
         const puntajeRondaJugador = resultadosRonda.find((r) => r.id === j.id)?.puntajeRonda ?? 0;
@@ -218,14 +230,12 @@ function iniciarFaseTres(codigo) {
 
     resultadosRonda.sort((a, b) => b.puntajeTotal - a.puntajeTotal);
 
-    console.log(`Sala ${codigo} - ronda ${sala.rondaActual} - resultados enviados`);
-
     iniciarTemporizadorFase(
         codigo,
         'faseResultados',
         sala.config.tiempoResultados,
         {
-            colorReal: sala.colorActual,
+            coloresReales: sala.coloresActuales, // array
             resultados: resultadosRonda,
             rondaActual: sala.rondaActual,
             cantidadRondas: sala.config.cantidadRondas,
@@ -329,6 +339,7 @@ io.on('connection', (socket) => {
                 tiempoMostrarColor: config.ronda.tiempoMostrarColor,
                 tiempoSeleccion: config.ronda.tiempoSeleccion,
                 tiempoResultados: config.ronda.tiempoResultados,
+                cantidadColores: config.ronda.cantidadColores,
                 distracciones: { ...config.distracciones },
             },
         });
@@ -345,6 +356,7 @@ io.on('connection', (socket) => {
                 tiempoMostrarColor: config.ronda.tiempoMostrarColor,
                 tiempoSeleccion: config.ronda.tiempoSeleccion,
                 tiempoResultados: config.ronda.tiempoResultados,
+                cantidadColores: config.ronda.cantidadColores,
                 distracciones: { ...config.distracciones },
             },
             creador: socket.id,
@@ -422,6 +434,7 @@ io.on('connection', (socket) => {
                 parpadeo: configPersonalizada?.distracciones?.parpadeo ?? config.distracciones.parpadeo,
                 atenuarFondo: configPersonalizada?.distracciones?.atenuarFondo ?? config.distracciones.atenuarFondo,
             },
+            cantidadColores: configPersonalizada?.cantidadColores ?? config.ronda.cantidadColores,
         };
 
         sala.estado = 'jugando';

@@ -97,6 +97,28 @@ function ConfigModal({ config, onConfigChange, onCerrar }) {
 
         <div className="config-modal__campo">
           <label className="config-modal__label">
+            Colores a memorizar
+            <span className="config-modal__valor">
+              {config.cantidadColores}
+            </span>
+          </label>
+          <input
+            className="config-modal__slider"
+            type="range"
+            min={LIMITES_CONFIG.cantidadColores.min}
+            max={LIMITES_CONFIG.cantidadColores.max}
+            value={config.cantidadColores}
+            onChange={(e) =>
+              onConfigChange({
+                ...config,
+                cantidadColores: Number(e.target.value),
+              })
+            }
+          />
+        </div>
+
+        <div className="config-modal__campo">
+          <label className="config-modal__label">
             Tiempo mostrar color
             <span className="config-modal__valor">
               {config.tiempoMostrarColor}s

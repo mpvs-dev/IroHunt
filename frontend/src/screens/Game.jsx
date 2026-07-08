@@ -10,14 +10,14 @@ function Game({
   cantidadRondas,
   duracionFase,
   segundosRestantes,
-  colorActual,
-  colorGuess,
+  coloresActuales,
+  coloresGuess,
   onColorChange,
   onEnviarGuess,
   onEditarGuess,
   guessEnviado,
   resultados,
-  colorReal,
+  coloresReales,
   onSalir,
   sala,
   distracciones,
@@ -37,16 +37,19 @@ function Game({
         </button>
       </header>
 
-      <Timer
-        duracion={duracionFase}
-        segundosRestantes={segundosRestantes}
-      />
+      <Timer duracion={duracionFase} segundosRestantes={segundosRestantes} />
 
       <div className="game__contenido">
-        {faseActual === "mostrando" && <FaseMostrando color={colorActual} distracciones={distracciones} rondaActual={rondaActual} />}
+        {faseActual === "mostrando" && (
+          <FaseMostrando
+            colores={coloresActuales}
+            distracciones={distracciones}
+            rondaActual={rondaActual}
+          />
+        )}
         {faseActual === "seleccion" && (
           <FaseSeleccion
-            colorGuess={colorGuess}
+            coloresGuess={coloresGuess}
             onColorChange={onColorChange}
             onEnviar={onEnviarGuess}
             onEditar={onEditarGuess}
@@ -55,7 +58,7 @@ function Game({
         )}
         {faseActual === "resultados" && (
           <FaseResultados
-            colorReal={colorReal}
+            coloresReales={coloresReales}
             resultados={resultados}
             rondaActual={rondaActual}
           />

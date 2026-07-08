@@ -3,6 +3,7 @@ export const LIMITES_CONFIG = {
     tiempoMostrarColor: { min: 1, max: 10 },
     tiempoSeleccion: { min: 5, max: 60 },
     tiempoResultados: { min: 5, max: 20 },
+    cantidadColores: { min: 1, max: 3 },
 };
 
 export const PRESETS = [
