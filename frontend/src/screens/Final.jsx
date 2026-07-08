@@ -9,6 +9,7 @@ function Final({
   onVolverMenu,
   onJugarDeNuevo,
   sala,
+  esCreador,
 }) {
   const [indiceJugador, setIndiceJugador] = useState(0);
 
@@ -119,9 +120,15 @@ function Final({
         >
           Volver al menu
         </button>
-        <button className="final__boton" onClick={onJugarDeNuevo}>
-          Volver al Jugar
-        </button>
+        {esCreador ? (
+          <button className="final__boton" onClick={onJugarDeNuevo}>
+            Volver al Jugar
+          </button>
+        ) : (
+          <p className="final__esperando">
+            Esperando una nueva partida...
+          </p>
+        )}
       </div>
     </main>
   );

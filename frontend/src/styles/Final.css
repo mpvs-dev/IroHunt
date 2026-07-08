@@ -259,6 +259,20 @@
   background: var(--accent-bg);
 }
 
+.final__esperando {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border-radius: 999px;
+  border: 1px dashed var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--text);
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
 @media (max-width: 480px) {
   .final__titulo {
     font-size: 32px;
@@ -267,6 +281,13 @@
   .final__boton {
     width: 100%;
     max-width: 320px;
+  }
+
+  .final__esperando {
+    width: 100%;
+    max-width: 320px;
+    justify-content: center;
+    text-align: center;
   }
 }
 

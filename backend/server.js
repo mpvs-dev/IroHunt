@@ -73,7 +73,7 @@ function calcularPuntaje(colorReal, colorGuess) {
     return Math.round(cercania * 1000);
 }
 
-const MARGEN_FIN_FASE = 350;
+const MARGEN_FIN_FASE = 700;
 
 function finalizarFaseConGracia(codigo, alFinalizar) {
     if (!salas.has(codigo)) return;
@@ -474,6 +474,12 @@ io.on('connection', (socket) => {
         if (!salas.has(codigo)) return;
 
         const sala = salas.get(codigo);
+
+        if (sala.creador !== socket.id) {
+            socket.emit('error', { mensaje: 'Solo el creador puede iniciar una nueva partida' });
+            return;
+        }
+
         sala.estado = 'esperando';
         sala.rondaActual = 0;
         sala.colorActual = null;
