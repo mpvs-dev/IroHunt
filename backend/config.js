@@ -5,6 +5,12 @@ module.exports = {
     tiempoSeleccion: 30,
     tiempoResultados: 10,
   },
+  distracciones: {
+    movimiento: false,
+    forma: false,
+    parpadeo: false,
+    atenuarFondo: true,
+  },
   sala: {
     minimoJugadores: 2,
     maximoJugadores: 8,

@@ -9,3 +9,35 @@
   font-size: 16px;
   color: var(--text);
 }
+
+.fase-mostrando__caja {
+  display: flex;
+  transition: transform 0.15s ease-out;
+}
+
+.fase-mostrando__caja--rotacion {
+  animation: fase-mostrando-rotar var(--duracion-rotacion, 3s) linear infinite;
+}
+
+.fase-mostrando__caja--escala {
+  animation: fase-mostrando-pulso var(--duracion-pulso, 1.2s) ease-in-out infinite;
+}
+
+@keyframes fase-mostrando-rotar {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fase-mostrando-pulso {
+  0%,
+  100% {
+    transform: scale(0.9);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}

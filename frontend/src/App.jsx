@@ -7,6 +7,7 @@ import Game from "./screens/Game";
 import Creditos from "./components/Creditos";
 import Fondo from "./components/Fondo";
 import CuentaAtras from "./components/CuentaAtras";
+
 function App() {
   const [conectado, setConectado] = useState(false);
   const [sala, setSala] = useState(null);
@@ -32,7 +33,7 @@ function App() {
   const [cantidadRondas, setCantidadRondas] = useState(null);
   const guessEnviadoRef = useState(false);
   const colorGuessRef = useRef(colorGuess);
-  const atenuarFondo = pantalla === "juego";
+  const atenuarFondo = pantalla === "juego" && (configPartida?.distracciones?.atenuarFondo ?? true);
   const [segundosRestantes, setSegundosRestantes] = useState(null);
   const faseActualRef = useRef(faseActual);
   const [cuentaAtras, setCuentaAtras] = useState(null);
@@ -83,6 +84,7 @@ function App() {
         tiempoMostrarColor: data.tiempoMostrarColor,
         tiempoSeleccion: data.tiempoSeleccion,
         tiempoResultados: data.tiempoResultados,
+        distracciones: data.distracciones,
       });
       setPantalla("juego");
     });
@@ -334,6 +336,7 @@ function App() {
           segundosRestantes={segundosRestantes}
           onSalir={salirPartida}
           sala={sala}
+          distracciones={configPartida?.distracciones}
         />
       )}
       {pantalla === "final" && (

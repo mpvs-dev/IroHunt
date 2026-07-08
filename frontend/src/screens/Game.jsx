@@ -20,6 +20,7 @@ function Game({
   colorReal,
   onSalir,
   sala,
+  distracciones,
 }) {
   return (
     <div className="game">
@@ -42,7 +43,7 @@ function Game({
       />
 
       <div className="game__contenido">
-        {faseActual === "mostrando" && <FaseMostrando color={colorActual} />}
+        {faseActual === "mostrando" && <FaseMostrando color={colorActual} distracciones={distracciones} rondaActual={rondaActual} />}
         {faseActual === "seleccion" && (
           <FaseSeleccion
             colorGuess={colorGuess}

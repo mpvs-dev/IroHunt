@@ -329,6 +329,7 @@ io.on('connection', (socket) => {
                 tiempoMostrarColor: config.ronda.tiempoMostrarColor,
                 tiempoSeleccion: config.ronda.tiempoSeleccion,
                 tiempoResultados: config.ronda.tiempoResultados,
+                distracciones: { ...config.distracciones },
             },
         });
 
@@ -344,6 +345,7 @@ io.on('connection', (socket) => {
                 tiempoMostrarColor: config.ronda.tiempoMostrarColor,
                 tiempoSeleccion: config.ronda.tiempoSeleccion,
                 tiempoResultados: config.ronda.tiempoResultados,
+                distracciones: { ...config.distracciones },
             },
             creador: socket.id,
         });
@@ -414,6 +416,12 @@ io.on('connection', (socket) => {
             tiempoMostrarColor: configPersonalizada?.tiempoMostrarColor ?? config.ronda.tiempoMostrarColor,
             tiempoSeleccion: configPersonalizada?.tiempoSeleccion ?? config.ronda.tiempoSeleccion,
             tiempoResultados: configPersonalizada?.tiempoResultados ?? config.ronda.tiempoResultados,
+            distracciones: {
+                movimiento: configPersonalizada?.distracciones?.movimiento ?? config.distracciones.movimiento,
+                forma: configPersonalizada?.distracciones?.forma ?? config.distracciones.forma,
+                parpadeo: configPersonalizada?.distracciones?.parpadeo ?? config.distracciones.parpadeo,
+                atenuarFondo: configPersonalizada?.distracciones?.atenuarFondo ?? config.distracciones.atenuarFondo,
+            },
         };
 
         sala.estado = 'jugando';
@@ -424,6 +432,7 @@ io.on('connection', (socket) => {
         io.to(codigo).emit('partidaIniciada', {
             cantidadRondas: sala.config.cantidadRondas,
             rondaActual: sala.rondaActual,
+            distracciones: sala.config.distracciones
         });
 
         console.log(`Sala ${codigo} inició partida`);

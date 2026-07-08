@@ -1,5 +1,9 @@
 import "../styles/ConfigModal.css";
-import { LIMITES_CONFIG, PRESETS } from "../constants/configJuego";
+import {
+  LIMITES_CONFIG,
+  PRESETS,
+  TOGGLES_DISTRACCION,
+} from "../constants/configJuego";
 
 function esPresetActivo(config, preset) {
   return (
@@ -38,6 +42,37 @@ function ConfigModal({ config, onConfigChange, onCerrar }) {
               {preset.nombre}
             </button>
           ))}
+        </div>
+
+        <div className="config-modal__campo">
+          <label className="config-modal__label">Distracciones</label>
+          <div className="config-modal__toggles">
+            {TOGGLES_DISTRACCION.map(({ key, label }) => (
+              <div key={key} className="config-modal__toggle-fila">
+                <span className="config-modal__toggle-label">{label}</span>
+                <button
+                  type="button"
+                  className={`config-modal__toggle${
+                    config.distracciones?.[key]
+                      ? " config-modal__toggle--activo"
+                      : ""
+                  }`}
+                  aria-pressed={!!config.distracciones?.[key]}
+                  onClick={() =>
+                    onConfigChange({
+                      ...config,
+                      distracciones: {
+                        ...config.distracciones,
+                        [key]: !config.distracciones?.[key],
+                      },
+                    })
+                  }
+                >
+                  <span className="config-modal__toggle-thumb" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="config-modal__campo">

@@ -5,3 +5,56 @@
   border: 2px solid rgba(0, 0, 0, 0.15);
   flex-shrink: 0;
 }
+
+.color-box--circulo {
+  border-radius: 50%;
+}
+
+.color-box--cuadrado {
+  border-radius: 4px;
+  -webkit-clip-path: inset(0);
+  clip-path: inset(0);
+}
+
+.color-box--triangulo {
+  border-radius: 0;
+  border: none;
+  -webkit-clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+}
+
+.color-box--diamante {
+  border-radius: 0;
+  border: none;
+  -webkit-clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+
+.color-box--estrella {
+  border-radius: 0;
+  border: none;
+  -webkit-clip-path: polygon(
+    50% 0%,
+    61% 35%,
+    98% 35%,
+    68% 57%,
+    79% 91%,
+    50% 70%,
+    21% 91%,
+    32% 57%,
+    2% 35%,
+    39% 35%
+  );
+  clip-path: polygon(
+    50% 0%,
+    61% 35%,
+    98% 35%,
+    68% 57%,
+    79% 91%,
+    50% 70%,
+    21% 91%,
+    32% 57%,
+    2% 35%,
+    39% 35%
+  );
+}

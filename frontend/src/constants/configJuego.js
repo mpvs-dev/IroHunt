@@ -10,3 +10,10 @@ export const PRESETS = [
     { nombre: "Normal", tiempoMostrarColor: 5, tiempoSeleccion: 30, tiempoResultados: 10 },
     { nombre: "Difícil", tiempoMostrarColor: 3, tiempoSeleccion: 15, tiempoResultados: 5 },
 ];
+
+export const TOGGLES_DISTRACCION = [
+    { key: "movimiento", label: "Movimiento" },
+    { key: "forma", label: "Formas" },
+    { key: "parpadeo", label: "Parpadeo" },
+    { key: "atenuarFondo", label: "Fondo" },
+];
