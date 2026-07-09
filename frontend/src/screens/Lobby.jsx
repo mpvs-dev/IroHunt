@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import TarjetaJugador from "../components/TarjetaJugador";
 import ConfigModal from "../components/configModal";
 import AvatarModal from "../components/AvatarModal";
@@ -28,6 +28,8 @@ function Lobby({
   const [copiado, setCopiado] = useState(false);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [avatarModalAbierto, setAvatarModalAbierto] = useState(false);
+
+  const abrirModalAvatar = useCallback(() => setAvatarModalAbierto(true), []);
 
   const copiarCodigo = () => {
     navigator.clipboard.writeText(sala);
@@ -93,7 +95,7 @@ function Lobby({
             esUno={j.id === miId}
             puedeExpulsar={esCreador && j.id !== miId}
             onExpulsar={onExpulsarJugador}
-            onEditarAvatar={() => setAvatarModalAbierto(true)}
+            onEditarAvatar={abrirModalAvatar}
           />
         ))}
       </div>

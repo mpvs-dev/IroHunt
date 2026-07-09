@@ -32,10 +32,6 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-.avatar--imagen {
-  object-fit: cover;
-}
-
 .tarjeta-jugador__nombre {
   font-size: 14px;
   font-weight: 500;

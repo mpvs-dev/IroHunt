@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { AVATARES } from "../constants/avatares";
 
 function AvatarVisual({ avatarId, size = 24, color = "#fff" }) {
@@ -23,4 +23,4 @@ function AvatarVisual({ avatarId, size = 24, color = "#fff" }) {
   return <Icon size={size} color={color} strokeWidth={1.75} />;
 }
 
-export default AvatarVisual;
+export default memo(AvatarVisual);

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import "../styles/ColorBox.css";
 
 const FIGURAS_VALIDAS = [
@@ -25,4 +26,4 @@ function ColorBox({ h, s, l, size = 200, className = "", figura = "blob" }) {
   );
 }
 
-export default ColorBox;
+export default memo(ColorBox);

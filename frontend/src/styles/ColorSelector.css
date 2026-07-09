@@ -13,15 +13,6 @@
   gap: 6px;
 }
 
-.slider-color__label {
-  font-size: 13px;
-  color: var(--text);
-}
-
-.slider-color__label strong {
-  color: var(--text-h);
-}
-
 .slider-color__pista {
   border-radius: 999px;
   height: 20px;
@@ -31,7 +22,6 @@
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
 }
 
-/* reset del input range para que sea transparente y se vea el fondo */
 .slider-color__input {
   -webkit-appearance: none;
   appearance: none;

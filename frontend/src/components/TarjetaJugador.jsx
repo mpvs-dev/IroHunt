@@ -1,3 +1,4 @@
+import { memo } from "react";
 import "../styles/TarjetaJugador.css";
 import "../styles/AvatarVisual.css";
 import AvatarVisual from "./AvatarVisual";
@@ -83,4 +84,4 @@ function colorDesdeNombre(nombre) {
   return colores[indice];
 }
 
-export default TarjetaJugador;
+export default memo(TarjetaJugador);

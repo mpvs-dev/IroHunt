@@ -23,70 +23,6 @@
   color: var(--text-h);
 }
 
-.final__tabla-wrapper {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.final__tabla {
-  border-collapse: collapse;
-  margin: 0 auto;
-  min-width: max-content;
-}
-
-.final__celda {
-  padding: 8px;
-  text-align: center;
-  vertical-align: middle;
-}
-
-.final__celda-contenido {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.final__celda--header {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text);
-  border: none;
-  padding-bottom: 6px;
-}
-
-.final__celda--label {
-  position: sticky;
-  left: 0;
-  background: transparent;
-  z-index: 1;
-  font-size: 13px;
-  color: var(--text);
-  white-space: nowrap;
-  padding-right: 12px;
-  border: none;
-  text-align: right;
-}
-
-.final__celda--puntaje {
-  position: sticky;
-  right: 0;
-  background: transparent;
-  z-index: 1;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--accent);
-  border: none;
-  padding-left: 12px;
-  white-space: nowrap;
-}
-
-.final__celda--puntaje-header {
-  position: sticky;
-  right: 0;
-  background: transparent;
-}
-
 .final__header {
   display: flex;
   flex-direction: column;
@@ -141,18 +77,6 @@
 .final__boton--outline:hover {
   background: var(--accent-bg);
   opacity: 1;
-}
-
-.final__puntaje-ronda {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text);
-}
-
-.final__color-indice {
-  font-size: 10px;
-  color: var(--text);
-  font-family: var(--mono);
 }
 
 .final__seccion {
@@ -288,16 +212,5 @@
     max-width: 320px;
     justify-content: center;
     text-align: center;
-  }
-}
-
-.final__tabla .final__swatch {
-  width: clamp(28px, 9vw, 60px);
-  height: clamp(28px, 9vw, 60px);
-}
-
-@media (max-width: 480px) {
-  .final__celda {
-    padding: 6px;
   }
 }
