@@ -6,6 +6,7 @@ import Game from "./screens/Game";
 import CuentaAtras from "./components/CuentaAtras";
 import Creditos from "./components/Creditos";
 import Fondo from "./components/Fondo";
+import ToastContainer from "./components/ToastContainer";
 
 function App() {
   const { estado, acciones } = useGameSocket();
@@ -18,22 +19,7 @@ function App() {
     <div style={{ padding: 40, paddingBottom: 90, fontFamily: "sans-serif" }}>
       <Fondo atenuado={atenuarFondo} />
 
-      {estado.mensajeSistema && (
-        <div
-          style={{
-            position: "fixed",
-            top: 20,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "rgba(0,0,0,0.8)",
-            color: "white",
-            padding: "12px 24px",
-            borderRadius: 8,
-          }}
-        >
-          {estado.mensajeSistema}
-        </div>
-      )}
+      <ToastContainer toasts={estado.toasts} onCerrar={acciones.cerrarToast} />
 
       {estado.pantalla === "menu" && (
         <Menu

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
+import { useToasts } from "./useToasts";
 
 const COLOR_GUESS_INICIAL = { h: 180, s: 50, l: 50 };
 
@@ -19,7 +20,7 @@ export function useGameSocket() {
     const [configModal, setConfigModal] = useState(null);
     const [miId, setMiId] = useState(null);
     const [creadorId, setCreadorId] = useState(null);
-    const [mensajeSistema, setMensajeSistema] = useState(null);
+    const { toasts, mostrarToast, eliminarToast } = useToasts();
     const [cantidadRondas, setCantidadRondas] = useState(null);
     const [segundosRestantes, setSegundosRestantes] = useState(null);
     const [cuentaAtras, setCuentaAtras] = useState(null);
@@ -154,16 +155,15 @@ export function useGameSocket() {
                 setCreadorId(data.creador);
             },
 
-            creadorDesconectado: (data) => setMensajeSistema(data.mensaje),
+            creadorDesconectado: (data) => { mostrarToast(data.mensaje, { tipo: "warning", duracion: 3000 }) },
 
             creadorReconectado: (data) => {
                 setJugadores(data.jugadores);
                 setCreadorId(data.creador);
-                setMensajeSistema(null);
             },
 
             partidaCancelada: (data) => {
-                setMensajeSistema(data.mensaje);
+                mostrarToast(data.mensaje, { tipo: "warning", duracion: 3000 });
                 setTimeout(() => {
                     setSala(null);
                     setJugadores([]);
@@ -175,7 +175,6 @@ export function useGameSocket() {
                     setResultadosFinales([]);
                     setConfigPartida(null);
                     setCuentaAtras(null);
-                    setMensajeSistema(null);
                     setPantalla("menu");
                 }, 3000);
             },
@@ -183,12 +182,11 @@ export function useGameSocket() {
             jugadorExpulsado: (data) => setJugadores(data.jugadores),
 
             fuisteExpulsado: () => {
-                setMensajeSistema("Fuiste expulsado de la sala");
+                mostrarToast("Fuiste expulsado de la sala", { tipo: "error", duracion: 2500 });
                 setTimeout(() => {
                     setSala(null);
                     setJugadores([]);
                     setPantalla("menu");
-                    setMensajeSistema(null);
                     socket.disconnect();
                     socket.connect();
                 }, 2500);
@@ -197,8 +195,7 @@ export function useGameSocket() {
             avatarActualizado: (data) => setJugadores(data.jugadores),
 
             error: (data) => {
-                setMensajeSistema(data.mensaje);
-                setTimeout(() => setMensajeSistema(null), 2500);
+                mostrarToast(data.mensaje, { tipo: "error" });
             },
 
             configActualizada: (data) => setConfigModal(data.config),
@@ -282,14 +279,17 @@ export function useGameSocket() {
             miId,
             creadorId,
             esCreador,
-            mensajeSistema,
             cantidadRondas,
             segundosRestantes,
             cuentaAtras,
             coloresActuales,
             coloresGuess,
             coloresReales,
+            toasts,
         },
-        acciones,
+        acciones: {
+            ...acciones,
+            cerrarToast: eliminarToast,
+        },
     };
 }

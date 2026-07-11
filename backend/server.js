@@ -4,7 +4,7 @@ const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
 const config = require("./config.js");
-const { availableMemory } = require('process');
+const { clear } = require('console');
 
 const PORT = process.env.PORT || 3001;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
@@ -290,6 +290,8 @@ io.on('connection', (socket) => {
             if (sala.jugadores.length === 0) {
                 clearInterval(timeouts.get(codigo));
                 timeouts.delete(codigo);
+                clearTimeout(timeoutsReconexion.get(codigo));
+                timeoutsReconexion.delete(codigo);
                 salas.delete(codigo);
                 console.log(`Sala ${codigo} eliminada`);
                 return;
