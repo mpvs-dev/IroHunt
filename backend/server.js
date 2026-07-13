@@ -20,6 +20,20 @@ const io = new Server(server, {
 const salas = new Map();
 const timeouts = new Map();
 const timeoutsReconexion = new Map();
+const contadoresEventos = new Map();
+
+const LIMITES_EVENTOS = {
+    crearSala: { maximo: 5, ventanaMs: 60_000 },
+    unirseSala: { maximo: 10, ventanaMs: 60_000 },
+    actualizarConfig: { maximo: 30, ventanaMs: 10_000 },
+    cambiarAvatar: { maximo: 15, ventanaMs: 10_000 },
+    enviarGuess: { maximo: 20, ventanaMs: 10_000 },
+    expulsarJugador: { maximo: 20, ventanaMs: 10_000 },
+};
+
+const MARGEN_FIN_FASE = 700;
+const NOMBRE_REGEX = /^[a-zA-ZÀ-ÿ0-9\s]+$/;
+const CODIGO_REGEX = /^[A-Z0-9]{6}$/;
 
 function asignarAvatarDisponible(sala) {
     const usados = new Set(sala.jugadores.map((j) => j.avatarId).filter(Boolean));
@@ -73,14 +87,112 @@ function calcularPuntaje(colorReal, colorGuess) {
     return Math.round(cercania * 1000);
 }
 
-const MARGEN_FIN_FASE = 700;
-
 function finalizarFaseConGracia(codigo, alFinalizar) {
     if (!salas.has(codigo)) return;
     io.to(codigo).emit('tick', { segundosRestantes: 0 });
     setTimeout(() => {
         if (salas.has(codigo)) alFinalizar(codigo);
     }, MARGEN_FIN_FASE);
+}
+
+function clamp(valor, min, max, valorPorDefecto) {
+    const num = Number(valor);
+    if (!Number.isFinite(num)) return valorPorDefecto;
+    return Math.min(max, Math.max(min, Math.round(num)));
+}
+
+function validarConfig(configPersonalizada, configBase) {
+    const l = config.limites;
+    return {
+        cantidadRondas: clamp(
+            configPersonalizada?.cantidadRondas,
+            l.cantidadRondas.min, l.cantidadRondas.max,
+            configBase.cantidadRondas
+        ),
+        tiempoMostrarColor: clamp(
+            configPersonalizada?.tiempoMostrarColor,
+            l.tiempoMostrarColor.min, l.tiempoMostrarColor.max,
+            configBase.tiempoMostrarColor
+        ),
+        tiempoSeleccion: clamp(
+            configPersonalizada?.tiempoSeleccion,
+            l.tiempoSeleccion.min, l.tiempoSeleccion.max,
+            configBase.tiempoSeleccion
+        ),
+        tiempoResultados: clamp(
+            configPersonalizada?.tiempoResultados,
+            l.tiempoResultados.min, l.tiempoResultados.max,
+            configBase.tiempoResultados
+        ),
+        cantidadColores: clamp(
+            configPersonalizada?.cantidadColores,
+            l.cantidadColores.min, l.cantidadColores.max,
+            configBase.cantidadColores
+        ),
+        distracciones: {
+            movimiento: !!(configPersonalizada?.distracciones?.movimiento ?? configBase.distracciones.movimiento),
+            forma: !!(configPersonalizada?.distracciones?.forma ?? configBase.distracciones.forma),
+            parpadeo: !!(configPersonalizada?.distracciones?.parpadeo ?? configBase.distracciones.parpadeo),
+            atenuarFondo: !!(configPersonalizada?.distracciones?.atenuarFondo ?? configBase.distracciones.atenuarFondo),
+        },
+    };
+}
+
+function clampNum(valor, min, max, porDefecto) {
+    const num = Number(valor);
+    if (!Number.isFinite(num)) return porDefecto;
+    return Math.min(max, Math.max(min, num));
+}
+
+function validarColorGuess(color) {
+    if (typeof color !== 'object' || color === null) {
+        return { h: 0, s: 0, l: 50 };
+    }
+    return {
+        h: clampNum(color.h, 0, 360, 0),
+        s: clampNum(color.s, 0, 100, 0),
+        l: clampNum(color.l, 0, 100, 50),
+    };
+}
+
+function validarGuessArray(guessArray, cantidadColores) {
+    const lista = Array.isArray(guessArray) ? guessArray : [];
+    return Array.from({ length: cantidadColores }, (_, i) =>
+        validarColorGuess(lista[i])
+    );
+}
+
+function validarNombreServidor(nombre) {
+    if (typeof nombre !== 'string') return null;
+    const limpio = nombre.trim();
+    if (!limpio) return null;
+    if (limpio.length < 2 || limpio.length > 20) return null;
+    if (!NOMBRE_REGEX.test(limpio)) return null;
+    return limpio;
+}
+
+function validarCodigoServidor(codigo) {
+    if (typeof codigo !== 'string') return null;
+    const limpio = codigo.trim().toUpperCase();
+    if (!CODIGO_REGEX.test(limpio)) return null;
+    return limpio;
+}
+
+function excedeLimite(socketId, evento) {
+    const limite = LIMITES_EVENTOS[evento];
+    if (!limite) return false;
+
+    const clave = `${socketId}:${evento}`;
+    const ahora = Date.now();
+    const registro = contadoresEventos.get(clave);
+
+    if (!registro || ahora - registro.inicioVentana > limite.ventanaMs) {
+        contadoresEventos.set(clave, { conteo: 1, inicioVentana: ahora });
+        return false;
+    }
+
+    registro.conteo++;
+    return registro.conteo > limite.maximo;
 }
 
 function iniciarTemporizadorFase(codigo, evento, duracion, datosExtra, alFinalizar) {
@@ -282,6 +394,10 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log(`Jugador desconectado: ${socket.id}`);
 
+        Object.keys(LIMITES_EVENTOS).forEach((evento) => {
+            contadoresEventos.delete(`${socket.id}:${evento}`);
+        });
+
         const codigo = socket.data.sala;
         if (codigo && salas.has(codigo)) {
             const sala = salas.get(codigo);
@@ -323,10 +439,18 @@ io.on('connection', (socket) => {
     });
 
     socket.on('crearSala', (nombre) => {
+        if (excedeLimite(socket.id, 'crearSala')) return;
+
+        const nombreValido = validarNombreServidor(nombre);
+        if (!nombreValido) {
+            socket.emit('error', { mensaje: 'Nombre inválido' });
+            return;
+        }
+
         const codigo = generarCodigo();
 
         salas.set(codigo, {
-            jugadores: [{ id: socket.id, nombre, avatarId: config.avatares.idsDisponibles[0] }],
+            jugadores: [{ id: socket.id, nombre: nombreValido, avatarId: config.avatares.idsDisponibles[0] }],
             creador: socket.id,
             colorActual: null,
             estado: 'esperando',
@@ -368,12 +492,26 @@ io.on('connection', (socket) => {
     });
 
     socket.on('unirseSala', ({ codigo, nombre }) => {
-        if (!salas.has(codigo)) {
+        if (excedeLimite(socket.id, 'unirseSala')) return;
+
+        const nombreValido = validarNombreServidor(nombre);
+        if (!nombreValido) {
+            socket.emit('error', { mensaje: 'Nombre inválido' });
+            return;
+        }
+
+        const codigoValido = validarCodigoServidor(codigo);
+        if (!codigoValido) {
+            socket.emit('error', { mensaje: 'Código de sala inválido' });
+            return;
+        }
+
+        if (!salas.has(codigoValido)) {
             socket.emit('error', { mensaje: 'La sala no existe' });
             return;
         }
 
-        const sala = salas.get(codigo);
+        const sala = salas.get(codigoValido);
 
         if (sala.estado !== 'esperando') {
             socket.emit('error', { mensaje: 'La partida ya empezó' });
@@ -385,29 +523,30 @@ io.on('connection', (socket) => {
             return;
         }
 
-        const nombreDuplicado = sala.jugadores.some((j) => j.nombre === nombre);
+        const nombreDuplicado = sala.jugadores.some((j) => j.nombre === nombreValido);
         if (nombreDuplicado) {
             socket.emit('error', { mensaje: 'Ya hay un jugador con ese nombre en la sala' });
             return;
         }
 
         const avatarAsignado = asignarAvatarDisponible(sala);
-        sala.jugadores.push({ id: socket.id, nombre, avatarId: avatarAsignado }); socket.join(codigo);
-        socket.data.sala = codigo;
-        socket.data.nombre = nombre;
+        sala.jugadores.push({ id: socket.id, nombre: nombreValido, avatarId: avatarAsignado });
+        socket.join(codigoValido);
+        socket.data.sala = codigoValido;
+        socket.data.nombre = nombreValido;
 
         socket.emit('salaUnida', {
-            codigo,
+            codigo: codigoValido,
             jugadores: sala.jugadores,
             creador: sala.creador,
             config: sala.config,
         });
 
-        socket.to(codigo).emit('jugadorUnido', {
+        socket.to(codigoValido).emit('jugadorUnido', {
             jugadores: sala.jugadores,
         });
 
-        console.log(`${nombre} se unió a la sala ${codigo}`);
+        console.log(`${nombreValido} se unió a la sala ${codigoValido}`);
     });
 
     socket.on('iniciarPartida', ({ codigo, config: configPersonalizada }) => {
@@ -425,19 +564,10 @@ io.on('connection', (socket) => {
             return;
         }
 
-        sala.config = {
-            cantidadRondas: configPersonalizada?.cantidadRondas ?? config.ronda.cantidadRondas,
-            tiempoMostrarColor: configPersonalizada?.tiempoMostrarColor ?? config.ronda.tiempoMostrarColor,
-            tiempoSeleccion: configPersonalizada?.tiempoSeleccion ?? config.ronda.tiempoSeleccion,
-            tiempoResultados: configPersonalizada?.tiempoResultados ?? config.ronda.tiempoResultados,
-            distracciones: {
-                movimiento: configPersonalizada?.distracciones?.movimiento ?? config.distracciones.movimiento,
-                forma: configPersonalizada?.distracciones?.forma ?? config.distracciones.forma,
-                parpadeo: configPersonalizada?.distracciones?.parpadeo ?? config.distracciones.parpadeo,
-                atenuarFondo: configPersonalizada?.distracciones?.atenuarFondo ?? config.distracciones.atenuarFondo,
-            },
-            cantidadColores: configPersonalizada?.cantidadColores ?? config.ronda.cantidadColores,
-        };
+        sala.config = validarConfig(configPersonalizada, {
+            ...config.ronda,
+            distracciones: config.distracciones,
+        });
 
         sala.estado = 'jugando';
         sala.rondaActual = 1;
@@ -455,13 +585,18 @@ io.on('connection', (socket) => {
     });
 
     socket.on('enviarGuess', (colorGuess) => {
+        if (excedeLimite(socket.id, 'enviarGuess')) return;
+
         const codigo = socket.data.sala;
         if (!codigo || !salas.has(codigo)) return;
 
         const sala = salas.get(codigo);
         if (sala.estado !== 'seleccion') return;
 
-        sala.guesses[socket.id] = colorGuess;
+        sala.guesses[socket.id] = validarGuessArray(
+            colorGuess,
+            sala.config.cantidadColores
+        );
 
         const todosRespondieron = sala.jugadores.every((j) => sala.guesses[j.id]);
 
@@ -547,6 +682,8 @@ io.on('connection', (socket) => {
     });
 
     socket.on('expulsarJugador', ({ codigo, jugadorId }) => {
+        if (excedeLimite(socket.id, 'expulsarJugador')) return;
+        
         if (!salas.has(codigo)) return;
         const sala = salas.get(codigo);
 
@@ -577,11 +714,18 @@ io.on('connection', (socket) => {
     });
 
     socket.on('cambiarAvatar', ({ codigo, avatarId }) => {
+        if (excedeLimite(socket.id, 'cambiarAvatar')) return;
+
         if (!salas.has(codigo)) return;
         const sala = salas.get(codigo);
 
         const jugador = sala.jugadores.find((j) => j.id === socket.id);
         if (!jugador) return;
+
+        if (!config.avatares.idsDisponibles.includes(avatarId)) {
+            socket.emit('error', { mensaje: 'Avatar inválido' });
+            return;
+        }
 
         const enUso = sala.jugadores.some(
             (j) => j.id !== socket.id && j.avatarId === avatarId
@@ -596,13 +740,15 @@ io.on('connection', (socket) => {
     });
 
     socket.on('actualizarConfig', ({ codigo, config: nuevaConfig }) => {
+        if (excedeLimite(socket.id, 'actualizarConfig')) return;
+
         if (!salas.has(codigo)) return;
         const sala = salas.get(codigo);
 
         if (sala.creador !== socket.id) return;
         if (sala.estado !== 'esperando') return;
 
-        sala.config = { ...sala.config, ...nuevaConfig };
+        sala.config = validarConfig(nuevaConfig, sala.config);
         io.to(codigo).emit('configActualizada', { config: sala.config });
     });
 

@@ -6,6 +6,13 @@ module.exports = {
     tiempoResultados: 10,
     cantidadColores: 1,
   },
+  limites: {
+    cantidadRondas: { min: 2, max: 10 },
+    tiempoMostrarColor: { min: 1, max: 10 },
+    tiempoSeleccion: { min: 5, max: 60 },
+    tiempoResultados: { min: 5, max: 20 },
+    cantidadColores: { min: 1, max: 3 },
+  },
   distracciones: {
     movimiento: false,
     forma: false,
