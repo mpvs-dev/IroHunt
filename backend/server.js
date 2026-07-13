@@ -4,7 +4,7 @@ const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
 const config = require("./config.js");
-const { clear } = require('console');
+const { availableMemory } = require('process');
 
 const PORT = process.env.PORT || 3001;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
@@ -18,9 +18,100 @@ const io = new Server(server, {
 });
 
 const salas = new Map();
-const timeouts = new Map();
 const timeoutsReconexion = new Map();
-const contadoresEventos = new Map();
+
+// ===================== Validación: nombre y código de sala =====================
+// Espejo de frontend/src/screens/Menu.jsx
+const NOMBRE_REGEX = /^[a-zA-ZÀ-ÿ0-9\s]+$/;
+const CODIGO_REGEX = /^[A-Z0-9]{6}$/;
+
+function validarNombreServidor(nombre) {
+    if (typeof nombre !== 'string') return null;
+    const limpio = nombre.trim();
+    if (!limpio) return null;
+    if (limpio.length < 2 || limpio.length > 20) return null;
+    if (!NOMBRE_REGEX.test(limpio)) return null;
+    return limpio;
+}
+
+function validarCodigoServidor(codigo) {
+    if (typeof codigo !== 'string') return null;
+    const limpio = codigo.trim().toUpperCase();
+    if (!CODIGO_REGEX.test(limpio)) return null;
+    return limpio;
+}
+
+// ===================== Validación: configuración de partida =====================
+function clamp(valor, min, max, valorPorDefecto) {
+    const num = Number(valor);
+    if (!Number.isFinite(num)) return valorPorDefecto;
+    return Math.min(max, Math.max(min, Math.round(num)));
+}
+
+function validarConfig(configPersonalizada, configBase) {
+    const l = config.limites;
+    return {
+        cantidadRondas: clamp(
+            configPersonalizada?.cantidadRondas,
+            l.cantidadRondas.min, l.cantidadRondas.max,
+            configBase.cantidadRondas
+        ),
+        tiempoMostrarColor: clamp(
+            configPersonalizada?.tiempoMostrarColor,
+            l.tiempoMostrarColor.min, l.tiempoMostrarColor.max,
+            configBase.tiempoMostrarColor
+        ),
+        tiempoSeleccion: clamp(
+            configPersonalizada?.tiempoSeleccion,
+            l.tiempoSeleccion.min, l.tiempoSeleccion.max,
+            configBase.tiempoSeleccion
+        ),
+        tiempoResultados: clamp(
+            configPersonalizada?.tiempoResultados,
+            l.tiempoResultados.min, l.tiempoResultados.max,
+            configBase.tiempoResultados
+        ),
+        cantidadColores: clamp(
+            configPersonalizada?.cantidadColores,
+            l.cantidadColores.min, l.cantidadColores.max,
+            configBase.cantidadColores
+        ),
+        distracciones: {
+            movimiento: !!(configPersonalizada?.distracciones?.movimiento ?? configBase.distracciones.movimiento),
+            forma: !!(configPersonalizada?.distracciones?.forma ?? configBase.distracciones.forma),
+            parpadeo: !!(configPersonalizada?.distracciones?.parpadeo ?? configBase.distracciones.parpadeo),
+            atenuarFondo: !!(configPersonalizada?.distracciones?.atenuarFondo ?? configBase.distracciones.atenuarFondo),
+        },
+    };
+}
+
+// ===================== Validación: guess de color =====================
+function clampNum(valor, min, max, porDefecto) {
+    const num = Number(valor);
+    if (!Number.isFinite(num)) return porDefecto;
+    return Math.min(max, Math.max(min, num));
+}
+
+function validarColorGuess(color) {
+    if (typeof color !== 'object' || color === null) {
+        return { h: 0, s: 0, l: 50 };
+    }
+    return {
+        h: clampNum(color.h, 0, 360, 0),
+        s: clampNum(color.s, 0, 100, 0),
+        l: clampNum(color.l, 0, 100, 50),
+    };
+}
+
+function validarGuessArray(guessArray, cantidadColores) {
+    const lista = Array.isArray(guessArray) ? guessArray : [];
+    return Array.from({ length: cantidadColores }, (_, i) =>
+        validarColorGuess(lista[i])
+    );
+}
+
+// ===================== Rate limiting por socket =====================
+const contadoresEventos = new Map(); // "socketId:evento" -> { conteo, inicioVentana }
 
 const LIMITES_EVENTOS = {
     crearSala: { maximo: 5, ventanaMs: 60_000 },
@@ -31,9 +122,28 @@ const LIMITES_EVENTOS = {
     expulsarJugador: { maximo: 20, ventanaMs: 10_000 },
 };
 
-const MARGEN_FIN_FASE = 700;
-const NOMBRE_REGEX = /^[a-zA-ZÀ-ÿ0-9\s]+$/;
-const CODIGO_REGEX = /^[A-Z0-9]{6}$/;
+function excedeLimite(socketId, evento) {
+    const limite = LIMITES_EVENTOS[evento];
+    if (!limite) return false;
+
+    const clave = `${socketId}:${evento}`;
+    const ahora = Date.now();
+    const registro = contadoresEventos.get(clave);
+
+    if (!registro || ahora - registro.inicioVentana > limite.ventanaMs) {
+        contadoresEventos.set(clave, { conteo: 1, inicioVentana: ahora });
+        return false;
+    }
+
+    registro.conteo++;
+    return registro.conteo > limite.maximo;
+}
+
+function limpiarContadoresDeSocket(socketId) {
+    Object.keys(LIMITES_EVENTOS).forEach((evento) => {
+        contadoresEventos.delete(`${socketId}:${evento}`);
+    });
+}
 
 function asignarAvatarDisponible(sala) {
     const usados = new Set(sala.jugadores.map((j) => j.avatarId).filter(Boolean));
@@ -87,6 +197,8 @@ function calcularPuntaje(colorReal, colorGuess) {
     return Math.round(cercania * 1000);
 }
 
+const MARGEN_FIN_FASE = 700;
+
 function finalizarFaseConGracia(codigo, alFinalizar) {
     if (!salas.has(codigo)) return;
     io.to(codigo).emit('tick', { segundosRestantes: 0 });
@@ -95,157 +207,64 @@ function finalizarFaseConGracia(codigo, alFinalizar) {
     }, MARGEN_FIN_FASE);
 }
 
-function clamp(valor, min, max, valorPorDefecto) {
-    const num = Number(valor);
-    if (!Number.isFinite(num)) return valorPorDefecto;
-    return Math.min(max, Math.max(min, Math.round(num)));
+// ===================== Timer global (reemplaza un setInterval por sala) =====================
+const cronometros = new Map(); // codigo -> { restante, tipo: 'fase' | 'cuentaAtras', alFinalizar }
+let intervaloGlobal = null;
+
+function asegurarIntervaloGlobal() {
+    if (intervaloGlobal) return;
+    intervaloGlobal = setInterval(tickGlobal, 1000);
 }
 
-function validarConfig(configPersonalizada, configBase) {
-    const l = config.limites;
-    return {
-        cantidadRondas: clamp(
-            configPersonalizada?.cantidadRondas,
-            l.cantidadRondas.min, l.cantidadRondas.max,
-            configBase.cantidadRondas
-        ),
-        tiempoMostrarColor: clamp(
-            configPersonalizada?.tiempoMostrarColor,
-            l.tiempoMostrarColor.min, l.tiempoMostrarColor.max,
-            configBase.tiempoMostrarColor
-        ),
-        tiempoSeleccion: clamp(
-            configPersonalizada?.tiempoSeleccion,
-            l.tiempoSeleccion.min, l.tiempoSeleccion.max,
-            configBase.tiempoSeleccion
-        ),
-        tiempoResultados: clamp(
-            configPersonalizada?.tiempoResultados,
-            l.tiempoResultados.min, l.tiempoResultados.max,
-            configBase.tiempoResultados
-        ),
-        cantidadColores: clamp(
-            configPersonalizada?.cantidadColores,
-            l.cantidadColores.min, l.cantidadColores.max,
-            configBase.cantidadColores
-        ),
-        distracciones: {
-            movimiento: !!(configPersonalizada?.distracciones?.movimiento ?? configBase.distracciones.movimiento),
-            forma: !!(configPersonalizada?.distracciones?.forma ?? configBase.distracciones.forma),
-            parpadeo: !!(configPersonalizada?.distracciones?.parpadeo ?? configBase.distracciones.parpadeo),
-            atenuarFondo: !!(configPersonalizada?.distracciones?.atenuarFondo ?? configBase.distracciones.atenuarFondo),
-        },
-    };
-}
-
-function clampNum(valor, min, max, porDefecto) {
-    const num = Number(valor);
-    if (!Number.isFinite(num)) return porDefecto;
-    return Math.min(max, Math.max(min, num));
-}
-
-function validarColorGuess(color) {
-    if (typeof color !== 'object' || color === null) {
-        return { h: 0, s: 0, l: 50 };
+function detenerIntervaloGlobalSiVacio() {
+    if (cronometros.size === 0 && intervaloGlobal) {
+        clearInterval(intervaloGlobal);
+        intervaloGlobal = null;
     }
-    return {
-        h: clampNum(color.h, 0, 360, 0),
-        s: clampNum(color.s, 0, 100, 0),
-        l: clampNum(color.l, 0, 100, 50),
-    };
 }
 
-function validarGuessArray(guessArray, cantidadColores) {
-    const lista = Array.isArray(guessArray) ? guessArray : [];
-    return Array.from({ length: cantidadColores }, (_, i) =>
-        validarColorGuess(lista[i])
-    );
-}
+function tickGlobal() {
+    for (const [codigo, cron] of cronometros) {
+        if (!salas.has(codigo)) {
+            cronometros.delete(codigo);
+            continue;
+        }
 
-function validarNombreServidor(nombre) {
-    if (typeof nombre !== 'string') return null;
-    const limpio = nombre.trim();
-    if (!limpio) return null;
-    if (limpio.length < 2 || limpio.length > 20) return null;
-    if (!NOMBRE_REGEX.test(limpio)) return null;
-    return limpio;
-}
+        cron.restante--;
 
-function validarCodigoServidor(codigo) {
-    if (typeof codigo !== 'string') return null;
-    const limpio = codigo.trim().toUpperCase();
-    if (!CODIGO_REGEX.test(limpio)) return null;
-    return limpio;
-}
+        if (cron.restante > 0) {
+            const evento = cron.tipo === 'fase' ? 'tick' : 'cuentaAtras';
+            io.to(codigo).emit(evento, { segundosRestantes: cron.restante });
+            continue;
+        }
 
-function excedeLimite(socketId, evento) {
-    const limite = LIMITES_EVENTOS[evento];
-    if (!limite) return false;
+        cronometros.delete(codigo);
 
-    const clave = `${socketId}:${evento}`;
-    const ahora = Date.now();
-    const registro = contadoresEventos.get(clave);
-
-    if (!registro || ahora - registro.inicioVentana > limite.ventanaMs) {
-        contadoresEventos.set(clave, { conteo: 1, inicioVentana: ahora });
-        return false;
+        if (cron.tipo === 'fase') {
+            finalizarFaseConGracia(codigo, cron.alFinalizar);
+        } else {
+            cron.alFinalizar(codigo);
+        }
     }
-
-    registro.conteo++;
-    return registro.conteo > limite.maximo;
+    detenerIntervaloGlobalSiVacio();
 }
 
 function iniciarTemporizadorFase(codigo, evento, duracion, datosExtra, alFinalizar) {
     if (!salas.has(codigo)) return;
-    let restante = duracion;
 
-    io.to(codigo).emit(evento, { ...datosExtra, duracion, segundosRestantes: restante });
+    io.to(codigo).emit(evento, { ...datosExtra, duracion, segundosRestantes: duracion });
 
-    const intervalo = setInterval(() => {
-        if (!salas.has(codigo)) {
-            clearInterval(intervalo);
-            return;
-        }
-
-        restante--;
-
-        if (restante > 0) {
-            io.to(codigo).emit('tick', { segundosRestantes: restante });
-            return;
-        }
-
-        clearInterval(intervalo);
-        timeouts.delete(codigo);
-        finalizarFaseConGracia(codigo, alFinalizar);
-    }, 1000);
-
-    timeouts.set(codigo, intervalo);
+    cronometros.set(codigo, { restante: duracion, tipo: 'fase', alFinalizar });
+    asegurarIntervaloGlobal();
 }
 
 function iniciarCuentaAtras(codigo, duracion = 3) {
     if (!salas.has(codigo)) return;
-    let restante = duracion;
 
-    io.to(codigo).emit('cuentaAtras', { segundosRestantes: restante });
+    io.to(codigo).emit('cuentaAtras', { segundosRestantes: duracion });
 
-    const intervalo = setInterval(() => {
-        if (!salas.has(codigo)) {
-            clearInterval(intervalo);
-            return;
-        }
-
-        restante--;
-
-        if (restante > 0) {
-            io.to(codigo).emit('cuentaAtras', { segundosRestantes: restante });
-        } else {
-            clearInterval(intervalo);
-            timeouts.delete(codigo);
-            iniciarFaseUno(codigo);
-        }
-    }, 1000);
-
-    timeouts.set(codigo, intervalo);
+    cronometros.set(codigo, { restante: duracion, tipo: 'cuentaAtras', alFinalizar: iniciarFaseUno });
+    asegurarIntervaloGlobal();
 }
 
 function generarColorSecreto() {
@@ -274,7 +293,7 @@ function iniciarFaseUno(codigo) {
         () => generarColorSecreto()
     );
 
-    sala.historialColores.push(coloresSecretos); // ahora es array de arrays
+    sala.historialColores.push(coloresSecretos);
     sala.coloresActuales = coloresSecretos;
     sala.estado = 'mostrando';
     sala.guesses = {};
@@ -284,7 +303,7 @@ function iniciarFaseUno(codigo) {
     iniciarTemporizadorFase(
         codigo,
         'faseMostrando',
-        sala.config.tiempoMostrarColor, // se muestran todos juntos, no se multiplica
+        sala.config.tiempoMostrarColor,
         {
             rondaActual: sala.rondaActual,
             cantidadRondas: sala.config.cantidadRondas,
@@ -323,7 +342,7 @@ function iniciarFaseTres(codigo) {
         return {
             id: j.id,
             nombre: j.nombre,
-            coloresGuess: guesses, // array
+            coloresGuess: guesses,
             puntajeRonda,
             puntajeTotal: sala.puntajes[j.id],
         };
@@ -347,7 +366,7 @@ function iniciarFaseTres(codigo) {
         'faseResultados',
         sala.config.tiempoResultados,
         {
-            coloresReales: sala.coloresActuales, // array
+            coloresReales: sala.coloresActuales,
             resultados: resultadosRonda,
             rondaActual: sala.rondaActual,
             cantidadRondas: sala.config.cantidadRondas,
@@ -394,9 +413,7 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log(`Jugador desconectado: ${socket.id}`);
 
-        Object.keys(LIMITES_EVENTOS).forEach((evento) => {
-            contadoresEventos.delete(`${socket.id}:${evento}`);
-        });
+        limpiarContadoresDeSocket(socket.id);
 
         const codigo = socket.data.sala;
         if (codigo && salas.has(codigo)) {
@@ -404,10 +421,8 @@ io.on('connection', (socket) => {
             sala.jugadores = sala.jugadores.filter((j) => j.id !== socket.id);
 
             if (sala.jugadores.length === 0) {
-                clearInterval(timeouts.get(codigo));
-                timeouts.delete(codigo);
-                clearTimeout(timeoutsReconexion.get(codigo));
-                timeoutsReconexion.delete(codigo);
+                cronometros.delete(codigo);
+                detenerIntervaloGlobalSiVacio();
                 salas.delete(codigo);
                 console.log(`Sala ${codigo} eliminada`);
                 return;
@@ -424,8 +439,8 @@ io.on('connection', (socket) => {
 
                 const timeoutReconexion = setTimeout(() => {
                     if (!salas.has(codigo)) return;
-                    clearTimeout(timeouts.get(codigo));
-                    timeouts.delete(codigo);
+                    cronometros.delete(codigo);
+                    detenerIntervaloGlobalSiVacio();
                     io.to(codigo).emit('partidaCancelada', {
                         mensaje: 'El creador no reconectó a tiempo',
                     });
@@ -472,7 +487,7 @@ io.on('connection', (socket) => {
 
         socket.join(codigo);
         socket.data.sala = codigo;
-        socket.data.nombre = nombre;
+        socket.data.nombre = nombreValido;
 
         socket.emit('salaCreada', {
             codigo,
@@ -488,7 +503,7 @@ io.on('connection', (socket) => {
             creador: socket.id,
         });
 
-        console.log(`Sala ${codigo} creada por ${nombre} (${socket.id})`);
+        console.log(`Sala ${codigo} creada por ${nombreValido} (${socket.id})`);
     });
 
     socket.on('unirseSala', ({ codigo, nombre }) => {
@@ -600,9 +615,9 @@ io.on('connection', (socket) => {
 
         const todosRespondieron = sala.jugadores.every((j) => sala.guesses[j.id]);
 
-        if (todosRespondieron && timeouts.has(codigo)) {
-            clearInterval(timeouts.get(codigo));
-            timeouts.delete(codigo);
+        if (todosRespondieron && cronometros.has(codigo)) {
+            cronometros.delete(codigo);
+            detenerIntervaloGlobalSiVacio();
             finalizarFaseConGracia(codigo, iniciarFaseTres);
         }
     });
@@ -683,7 +698,7 @@ io.on('connection', (socket) => {
 
     socket.on('expulsarJugador', ({ codigo, jugadorId }) => {
         if (excedeLimite(socket.id, 'expulsarJugador')) return;
-        
+
         if (!salas.has(codigo)) return;
         const sala = salas.get(codigo);
 
