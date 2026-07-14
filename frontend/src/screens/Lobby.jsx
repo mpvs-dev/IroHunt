@@ -111,7 +111,9 @@ function Lobby({
 
       {!esCreador && (
         <p className="lobby__esperando">
-          Esperando que el creador inicie la partida...
+          {esEspectador
+            ? "La sala está llena, vas a esperar la próxima partida como espectador."
+            : "Esperando que el creador inicie la partida..."}
         </p>
       )}
 

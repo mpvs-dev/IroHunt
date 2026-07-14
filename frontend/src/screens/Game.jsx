@@ -21,6 +21,8 @@ function Game({
   onSalir,
   sala,
   distracciones,
+  esEspectador,
+  cantidadEspectadores
 }) {
   return (
     <div className="game">
@@ -31,6 +33,9 @@ function Game({
         <div className="game__header-centro">
           <h1 className="game__titulo">IroHunt</h1>
           {sala && <span className="game__codigo">({sala})</span>}
+          {cantidadEspectadores > 0 && (
+            <span className="game__codigo">👀 {cantidadEspectadores}</span>
+          )}
         </div>
         <button className="game__salir" onClick={onSalir}>
           Salir
@@ -54,6 +59,7 @@ function Game({
             onEnviar={onEnviarGuess}
             onEditar={onEditarGuess}
             guessEnviado={guessEnviado}
+            esEspectador={esEspectador}
           />
         )}
         {faseActual === "resultados" && (

@@ -42,6 +42,7 @@ function App() {
           miId={estado.miId}
           onExpulsarJugador={acciones.expulsarJugador}
           onCambiarAvatar={acciones.cambiarAvatar}
+          esEspectador={estado.esEspectador}
         />
       )}
 
@@ -67,6 +68,8 @@ function App() {
           onSalir={acciones.salirPartida}
           sala={estado.sala}
           distracciones={estado.configPartida?.distracciones}
+          esEspectador={estado.esEspectador}
+          cantidadEspectadores={estado.cantidadEspectadores}
         />
       )}
 

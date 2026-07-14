@@ -20,8 +20,6 @@ const io = new Server(server, {
 const salas = new Map();
 const timeoutsReconexion = new Map();
 
-// ===================== Validación: nombre y código de sala =====================
-// Espejo de frontend/src/screens/Menu.jsx
 const NOMBRE_REGEX = /^[a-zA-ZÀ-ÿ0-9\s]+$/;
 const CODIGO_REGEX = /^[A-Z0-9]{6}$/;
 
@@ -41,7 +39,6 @@ function validarCodigoServidor(codigo) {
     return limpio;
 }
 
-// ===================== Validación: configuración de partida =====================
 function clamp(valor, min, max, valorPorDefecto) {
     const num = Number(valor);
     if (!Number.isFinite(num)) return valorPorDefecto;
@@ -85,7 +82,6 @@ function validarConfig(configPersonalizada, configBase) {
     };
 }
 
-// ===================== Validación: guess de color =====================
 function clampNum(valor, min, max, porDefecto) {
     const num = Number(valor);
     if (!Number.isFinite(num)) return porDefecto;
@@ -110,8 +106,7 @@ function validarGuessArray(guessArray, cantidadColores) {
     );
 }
 
-// ===================== Rate limiting por socket =====================
-const contadoresEventos = new Map(); // "socketId:evento" -> { conteo, inicioVentana }
+const contadoresEventos = new Map();
 
 const LIMITES_EVENTOS = {
     crearSala: { maximo: 5, ventanaMs: 60_000 },
@@ -197,6 +192,69 @@ function calcularPuntaje(colorReal, colorGuess) {
     return Math.round(cercania * 1000);
 }
 
+function snapshotFaseParaEspectador(sala, codigo) {
+    const cron = cronometros.get(codigo);
+    if (sala.estado === 'jugando') {
+        return { tipo: 'cuentaAtras', segundosRestantes: cron ? cron.restante : 3 };
+    }
+    if (sala.estado === 'mostrando') {
+        return {
+            tipo: 'mostrando',
+            rondaActual: sala.rondaActual,
+            cantidadRondas: sala.config.cantidadRondas,
+            colores: sala.coloresActuales,
+            duracion: sala.config.tiempoMostrarColor,
+            segundosRestantes: cron ? cron.restante : sala.config.tiempoMostrarColor,
+        };
+    }
+    if (sala.estado === 'seleccion') {
+        return {
+            tipo: 'seleccion',
+            duracion: sala.config.tiempoSeleccion,
+            segundosRestantes: cron ? cron.restante : sala.config.tiempoSeleccion,
+        };
+    }
+    if (sala.estado === 'resultados') {
+        return {
+            tipo: 'resultados',
+            duracion: sala.config.tiempoResultados,
+            segundosRestantes: cron ? cron.restante : sala.config.tiempoResultados,
+            rondaActual: sala.rondaActual,
+        };
+    }
+    return { tipo: null };
+}
+
+function snapshotFaseActual(sala, codigo) {
+    const cron = cronometros.get(codigo);
+    if (sala.estado === 'jugando') {
+        return { tipo: 'cuentaAtras', segundosRestantes: cron ? cron.restante : 3 };
+    }
+    if (sala.estado === 'mostrando') {
+        return {
+            tipo: 'mostrando',
+            colores: sala.coloresActuales,
+            duracion: sala.config.tiempoMostrarColor,
+            segundosRestantes: cron ? cron.restante : sala.config.tiempoMostrarColor,
+        };
+    }
+    if (sala.estado === 'seleccion') {
+        return {
+            tipo: 'seleccion',
+            duracion: sala.config.tiempoSeleccion,
+            segundosRestantes: cron ? cron.restante : sala.config.tiempoSeleccion,
+        };
+    }
+    if (sala.estado === 'resultados') {
+        return {
+            tipo: 'resultados',
+            duracion: sala.config.tiempoResultados,
+            segundosRestantes: cron ? cron.restante : sala.config.tiempoResultados,
+        };
+    }
+    return { tipo: null };
+}
+
 const MARGEN_FIN_FASE = 700;
 
 function finalizarFaseConGracia(codigo, alFinalizar) {
@@ -207,8 +265,7 @@ function finalizarFaseConGracia(codigo, alFinalizar) {
     }, MARGEN_FIN_FASE);
 }
 
-// ===================== Timer global (reemplaza un setInterval por sala) =====================
-const cronometros = new Map(); // codigo -> { restante, tipo: 'fase' | 'cuentaAtras', alFinalizar }
+const cronometros = new Map();
 let intervaloGlobal = null;
 
 function asegurarIntervaloGlobal() {
@@ -418,6 +475,15 @@ io.on('connection', (socket) => {
         const codigo = socket.data.sala;
         if (codigo && salas.has(codigo)) {
             const sala = salas.get(codigo);
+
+            if (socket.data.espectador) {
+                sala.espectadores = (sala.espectadores || []).filter((e) => e.id !== socket.id);
+                io.to(codigo).emit('espectadorUnido', {
+                    cantidadEspectadores: sala.espectadores.length,
+                });
+                return;
+            }
+
             sala.jugadores = sala.jugadores.filter((j) => j.id !== socket.id);
 
             if (sala.jugadores.length === 0) {
@@ -466,6 +532,7 @@ io.on('connection', (socket) => {
 
         salas.set(codigo, {
             jugadores: [{ id: socket.id, nombre: nombreValido, avatarId: config.avatares.idsDisponibles[0] }],
+            espectadores: [],
             creador: socket.id,
             colorActual: null,
             estado: 'esperando',
@@ -529,7 +596,40 @@ io.on('connection', (socket) => {
         const sala = salas.get(codigoValido);
 
         if (sala.estado !== 'esperando') {
-            socket.emit('error', { mensaje: 'La partida ya empezó' });
+            const totalActual = sala.jugadores.length + (sala.espectadores || []).length;
+            if (totalActual >= config.sala.maximoTotal) {
+                socket.emit('error', { mensaje: 'La sala esta llena (jugadores + espectadores)' });
+                return;
+            }
+            const nombreDuplicado =
+                sala.jugadores.some((j) => j.nombre === nombreValido) ||
+                (sala.espectadores || []).some((e) => e.nombre === nombreValido);
+            if (nombreDuplicado) {
+                socket.emit('error', { mensaje: 'Ya hay alguien con ese nombre en la sala' });
+                return;
+            }
+
+            sala.espectadores = sala.espectadores || [];
+            sala.espectadores.push({ id: socket.id, nombre: nombreValido });
+
+            socket.join(codigoValido);
+            socket.data.sala = codigoValido;
+            socket.data.nombre = nombreValido;
+            socket.data.espectador = true;
+
+            socket.emit('unidoComoEspectador', {
+                codigo: codigoValido,
+                jugadores: sala.jugadores,
+                creador: sala.creador,
+                config: sala.config,
+                fase: snapshotFaseParaEspectador(sala, codigoValido),
+            });
+
+            socket.to(codigoValido).emit('espectadorUnido', {
+                cantidadEspectadores: sala.espectadores.length,
+            });
+
+            console.log(`${nombreValido} entró como espectador a la sala ${codigoValido}`);
             return;
         }
 
@@ -600,6 +700,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('enviarGuess', (colorGuess) => {
+        if (socket.data.espectador) return;
         if (excedeLimite(socket.id, 'enviarGuess')) return;
 
         const codigo = socket.data.sala;
@@ -640,6 +741,24 @@ io.on('connection', (socket) => {
         sala.historialColores = [];
         sala.historialGuesses = {};
         sala.historialPuntajes = {};
+
+        const espectadoresActuales = sala.espectadores || [];
+        const cuposDisponibles = Math.max(0, config.sala.maximoJugadores - sala.jugadores.length);
+
+        const aPromover = espectadoresActuales.slice(0, cuposDisponibles);
+        const siguenComoEspectadores = espectadoresActuales.slice(cuposDisponibles);
+
+        aPromover.forEach((esp) => {
+            sala.jugadores.push({
+                id: esp.id,
+                nombre: esp.nombre,
+                avatarId: asignarAvatarDisponible(sala),
+            });
+            const socketEsp = io.sockets.sockets.get(esp.id);
+            if (socketEsp) socketEsp.data.espectador = false;
+        });
+
+        sala.espectadores = siguenComoEspectadores;
         sala.jugadores.forEach((j) => (sala.puntajes[j.id] = 0));
 
         io.to(codigo).emit('volverAlLobby', {
@@ -648,7 +767,15 @@ io.on('connection', (socket) => {
             creador: sala.creador,
         });
 
-        console.log(`Sala ${codigo} volvió al lobby`);
+        if (siguenComoEspectadores.length > 0) {
+            siguenComoEspectadores.forEach((esp) => {
+                io.to(esp.id).emit('siguesComoEspectador', {
+                    mensaje: 'La sala llegó al máximo de jugadores, seguís como espectador',
+                });
+            });
+        }
+
+        console.log(`Sala ${codigo} volvió al lobby (${aPromover.length} espectadores promovidos, ${siguenComoEspectadores.length} siguen espectando)`);
     });
 
     socket.on('reconectar', (codigo) => {
@@ -674,8 +801,16 @@ io.on('connection', (socket) => {
         delete sala.puntajes[idAnterior];
         sala.puntajes[socket.id] = puntajeAnterior;
 
+        // Trasladar guess de la ronda en curso si ya lo había mandado antes de caerse
+        if (sala.guesses[idAnterior]) {
+            sala.guesses[socket.id] = sala.guesses[idAnterior];
+            delete sala.guesses[idAnterior];
+        }
+
+        let eraCreador = false;
         if (sala.creador === idAnterior) {
             sala.creador = socket.id;
+            eraCreador = true;
             clearTimeout(timeoutsReconexion.get(codigo));
             timeoutsReconexion.delete(codigo);
 
@@ -690,12 +825,15 @@ io.on('connection', (socket) => {
             estado: sala.estado,
             jugadores: sala.jugadores,
             rondaActual: sala.rondaActual,
+            cantidadRondas: sala.config.cantidadRondas,
             creador: sala.creador,
+            config: sala.config,
+            eraCreador,
+            fase: snapshotFaseActual(sala, codigo),
         });
 
         console.log(`${jugadorExistente.nombre} reconectado a sala ${codigo}`);
     });
-
     socket.on('expulsarJugador', ({ codigo, jugadorId }) => {
         if (excedeLimite(socket.id, 'expulsarJugador')) return;
 

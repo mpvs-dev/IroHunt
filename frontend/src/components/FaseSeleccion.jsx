@@ -8,8 +8,19 @@ function FaseSeleccion({
   onEnviar,
   onEditar,
   guessEnviado,
+  esEspectador,
 }) {
   const lista = coloresGuess ?? [];
+
+  if (esEspectador) {
+    return (
+      <div className="fase-seleccion">
+        <p className="lobby__esperando">
+          Estas espectando esta partida. Vas a poder jugar en la proxima ronda.
+        </p>
+      </div>
+    );
+  }
 
   if (lista.length === 0) return null;
 

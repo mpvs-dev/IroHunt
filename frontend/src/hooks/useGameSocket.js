@@ -30,10 +30,18 @@ export function useGameSocket() {
     const [coloresReales, setColoresReales] = useState([]);
 
     const esCreador = miId === creadorId;
+    const [esEspectador, setEsEspectador] = useState(false);
+    const [cantidadEspectadores, setCantidadEspectadores] = useState(0);
 
     const guessEnviadoRef = useRef(false);
     const coloresGuessRef = useRef(coloresGuess);
     const faseActualRef = useRef(faseActual);
+    const salaRef = useRef(null);
+    const salidaIntencionalRef = useRef(false);
+
+    useEffect(() => {
+        salaRef.current = sala;
+    }, [sala]);
 
     useEffect(() => {
         faseActualRef.current = faseActual;
@@ -48,8 +56,13 @@ export function useGameSocket() {
 
         const handlers = {
             connect: () => {
-                setMiId(socket.id);
                 setConectado(true);
+                if (salaRef.current && !salidaIntencionalRef.current) {
+                    socket.emit('reconectar', salaRef.current);
+                } else {
+                    setMiId(socket.id);
+                }
+                salidaIntencionalRef.current = false;
             },
             disconnect: () => setConectado(false),
 
@@ -151,6 +164,7 @@ export function useGameSocket() {
                 guessEnviadoRef.current = false;
                 setColoresGuess([COLOR_GUESS_INICIAL]);
                 setCuentaAtras(null);
+                setEsEspectador((prev) => prev && !data.jugadores.some((j) => j.id === socket.id));
                 setPantalla("lobby");
                 setCreadorId(data.creador);
             },
@@ -187,6 +201,7 @@ export function useGameSocket() {
                     setSala(null);
                     setJugadores([]);
                     setPantalla("menu");
+                    salidaIntencionalRef.current = true;
                     socket.disconnect();
                     socket.connect();
                 }, 2500);
@@ -196,9 +211,81 @@ export function useGameSocket() {
 
             error: (data) => {
                 mostrarToast(data.mensaje, { tipo: "error" });
+                if (data.mensaje === "la sala ya no existe" || data.mensaje === "No se encontro tu sesión en esta sala") {
+                    salaRef.current = null;
+                    setSala(null);
+                    setPantalla("menu");
+                }
             },
 
             configActualizada: (data) => setConfigModal(data.config),
+
+            unidoComoEspectador: (data) => {
+                setEsEspectador(true);
+                setSala(data.codigo);
+                setJugadores(data.jugadores);
+                setCreadorId(data.creador);
+                setConfigModal(data.config);
+
+                const f = data.fase;
+                if (f.tipo === 'cuentaAtras') {
+                    setCuentaAtras(f.segundosRestantes);
+                    setPantalla('cuentaAtras');
+                } else if (f.tipo === 'mostrando') {
+                    setFaseActual('mostrando');
+                    setDuracionFase(f.duracion);
+                    setSegundosRestantes(f.segundosRestantes);
+                    setColoresActuales(f.colores ?? []);
+                    setRondaActual(f.rondaActual);
+                    setPantalla('juego');
+                } else if (f.tipo === 'seleccion' || f.tipo === 'resultados') {
+                    setFaseActual(f.tipo);
+                    setDuracionFase(f.duracion);
+                    setSegundosRestantes(f.segundosRestantes);
+                    setRondaActual(f.rondaActual);
+                    setColoresActuales([]);
+                    setPantalla('juego');
+                } else {
+                    setPantalla('lobby');
+                }
+            },
+
+            espectadorUnido: (data) => setCantidadEspectadores(data.cantidadEspectadores),
+
+            reconectado: (data) => {
+                setMiId(socket.id);
+                setSala(data.codigo);
+                setJugadores(data.jugadores);
+                setCreadorId(data.creador);
+                setConfigModal(data.config);
+                setRondaActual(data.rondaActual);
+
+                const f = data.fase;
+                if (!f || f.tipo === null) {
+                    setPantalla("lobby");
+                } else if (f.tipo === "cuentaAtras") {
+                    setCuentaAtras(f.segundosRestantes);
+                    setPantalla("cuentaAtras");
+                } else if (f.tipo === "mostrando") {
+                    setFaseActual("mostrando");
+                    setDuracionFase(f.duracion);
+                    setSegundosRestantes(f.segundosRestantes);
+                    setColoresActuales(f.colores ?? []);
+                    setColoresGuess((f.colores ?? []).map(() => ({ ...COLOR_GUESS_INICIAL })));
+                    setPantalla("juego");
+                } else if (f.tipo === "seleccion" || f.tipo === "resultados") {
+                    setFaseActual(f.tipo);
+                    setDuracionFase(f.duracion);
+                    setSegundosRestantes(f.segundosRestantes);
+                    setColoresActuales([]);
+                    setPantalla("juego");
+                }
+
+                mostrarToast("Te reconectaste a la sala", { tipo: "info", duracion: 2000 });
+            },
+            siguesComoEspectador: (data) => {
+                mostrarToast(data.mensaje, { tipo: "warning", duracion: 3500 });
+            },
         };
 
         Object.entries(handlers).forEach(([evento, fn]) => socket.on(evento, fn));
@@ -232,6 +319,7 @@ export function useGameSocket() {
         jugarDeNuevo: () => socket.emit("jugarDeNuevo", sala),
 
         salirPartida: () => {
+            salidaIntencionalRef.current = true;
             setPantalla("menu");
             setSala(null);
             socket.disconnect();
@@ -239,6 +327,7 @@ export function useGameSocket() {
         },
 
         volverAlMenu: () => {
+            salidaIntencionalRef.current = true;
             socket.disconnect();
             socket.connect();
             setSala(null);
@@ -286,6 +375,8 @@ export function useGameSocket() {
             coloresGuess,
             coloresReales,
             toasts,
+            esEspectador,
+            cantidadEspectadores,
         },
         acciones: {
             ...acciones,

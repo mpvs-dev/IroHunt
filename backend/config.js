@@ -20,8 +20,9 @@ module.exports = {
     atenuarFondo: true,
   },
   sala: {
-    minimoJugadores: 2,
+    minimoJugadores: 1,
     maximoJugadores: 8,
+    maximoTotal: 10,
   },
   reconexion: {
     tiempoEsperaCreador: 60,
